@@ -58,11 +58,10 @@ def get_stock_analysis(ticker):
         else:
             revenue_growth = revenue_growth * 100
 
-        # 核心評分邏輯（前後一致）
+        # 核心評分邏輯
         score = 50.0
         pros, cons = [], []
         
-        # 1. 籌碼面
         if holder_pct > 40:
             score += 15
             pros.append("大戶與法人有在照顧這檔股票，籌碼相對集中。")
@@ -77,7 +76,6 @@ def get_stock_analysis(ticker):
             score -= 10
             cons.append("最近法人有賣超動作，短線上可能有點賣壓。")
             
-        # 2. 基本面（真實營收）
         if revenue_growth > 15:
             score += 25
             pros.append(f"公司賺錢能力很強！最新營收年增率高達 {revenue_growth:.1f}%，業績大好。")
@@ -94,7 +92,6 @@ def get_stock_analysis(ticker):
         else:
             cons.append(f"毛利率偏低 ({gross_margin:.1f}%)，賺的利潤比較薄。")
             
-        # 3. 技術面
         is_bullish = current_price > ma20
         if is_bullish:
             score += 10
@@ -142,9 +139,9 @@ if st.sidebar.button("開始輕鬆分析"):
         data = get_stock_analysis(ticker_input)
         
     if not data["success"]:
-        st.error(f"無法取得資料，請檢查代號是否正確。")
+        st.error("無法取得資料，請檢查代號是否正確。")
     else:
-        # --- 1. 當日大盤與市場氛圍模擬 ---
+        # --- 1. 當日大盤與市場氛圍 ---
         st.subheader("🌤️ 今日台股大盤與市場氛圍")
         market_mood = "台股今日呈現震盪偏多格局，市場資金主要集中在半導體與權值股。整體投資情緒算式穩定，適合尋找基本面強勁的個股進行佈局。"
         st.info(market_mood)
@@ -167,7 +164,6 @@ if st.sidebar.button("開始輕鬆分析"):
         else:
             st.error(f"⚠️ **{data['action']}**")
             
-        # 用簡單條列式呈現原因，不放複雜表格
         c1, c2 = st.columns(2)
         with c1:
             st.markdown("### ✅ **為什麼值得看好（優點）**")
@@ -185,18 +181,13 @@ if st.sidebar.button("開始輕鬆分析"):
         lot_price = data['current_price'] * 1000
         
         if "小資" in user_profile:
-            advice_msg = f"""
-            - **適合怎麼買**：這檔股票一張大約要 **{lot_price:,.0f} 元**。如果資金有限，完全不用勉強買整張！建議使用券商的 **「零股交易」** 功能，每次投入 1,000 到 3,000 元，分個 5 到 10 次慢慢買進累積即可。
-            """
+            advice_msg = f"這檔股票一張大約要 **{lot_price:,.0f} 元**。如果資金有限，建議使用券商的 **零股交易** 功能，每次投入 1,000 到 3,000 元，分批慢慢買進累積即可。"
         elif "穩健上班族" in user_profile:
-            advice_msg = f"""
-            - **適合怎麼買**：你擁有一定的積蓄，建議採取 **「分批進場法」**。例如準備 5 萬至 10 萬元，分成 3 次投入（跌的時候買一點、漲的時候抱著），不要一次把資金全部砸下去。
-            """
+            advice_msg = "建議採取 **分批進場法**。例如準備 5 萬至 10 萬元，分成 3 次投入（跌的時候買一點、漲的時候抱著），不要一次把資金全部砸下去。"
         else:
-            advice_msg = f"""
-            - **適合怎麼買**：資金較為充裕，可以考慮直接買進整張。建議將資金分成兩份：7成買像台積電或大型權值股當作核心，另外 3 成可以用來買這類有爆發力的潛力標的。
-            """
-        st.markdown(advice_msg)
+            advice_msg = "資金較為充裕，可以考慮直接買進整張。建議將資金妥善配置，核心資產與潛力標的分散佈局。"
+            
+        st.markdown(f"- **適合怎麼買**：{advice_msg}")
 
         # --- 4. 輕鬆看同業相似標的 ---
         st.markdown("---")
@@ -206,7 +197,7 @@ if st.sidebar.button("開始輕鬆分析"):
         p_cols = st.columns(len(data['peers']))
         for i, (p_code, p_name) in enumerate(data['peers']):
             with p_cols[i]:
-                st.markdown(f"**🏢 {p_name}** (`{p_code:.0f}`)")
+                st.markdown(f"**🏢 {p_name}** (`{p_code}`)")
                 st.markdown("⭐ 同業表現穩健，值得放在名單中一起觀察。")
 
         st.markdown("---")
