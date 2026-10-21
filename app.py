@@ -26,7 +26,7 @@ st.markdown("""
 st.title("🎯 台股智慧選股與 ETF 決策助理")
 st.caption("結合國際總經、白話解說、AI 趨勢預估與風險快篩的智能投資夥伴！")
 
-# --- 優先順序 1：首頁與名詞白話化、新手引導 ---
+# 優先順序 1：首頁與名詞白話化、新手引導
 st.sidebar.header("⚙️ 查閱設定")
 ticker_input = st.sidebar.text_input("輸入台股代號", value="2330", help="例如：台積電輸 2330 ｜ 高股息ETF輸 00878").strip().upper()
 taiwan_ticker = f"{ticker_input}.TW"
@@ -186,7 +186,7 @@ if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
     else:
         target_type_str = "📦 ETF (一籃子分散資產)" if data["is_etf"] else "🏢 個股 (單一企業營運)"
         
-        # --- 優先順序 3：結果頁「摘要與風險」放最上方 ---
+        # 優先順序 3：結果頁「摘要與風險」放最上方
         with st.container(border=True):
             st.markdown(f"### ⚡ 一分鐘核心總結與風險快篩")
             if data['badge'] == 'success':
@@ -196,7 +196,6 @@ if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
             else:
                 st.error(f"⚠️ **綜合評語：{data['action']}** (綜合評分：{data['score']:.1f} 分)")
             
-            # 風險提示
             if data.get("score", 70) < 60:
                 st.warning("⚠️ **【避坑提醒】** 當前評分偏低，可能存在基本面轉弱或短線技術面破線風險，不建議盲目歐印。")
             else:
@@ -222,7 +221,7 @@ if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
             with st.container(border=True):
                 st.metric(data["metric3_name"], data["metric3_val"])
 
-        # --- 優先順序 2：解釋評分、數據與預估線的依據與限制 ---
+        # 優先順序 2：解釋評分、數據與預估線的依據與限制
         with st.container(border=True):
             st.markdown("### 📈 股價趨勢與 AI 線性預估模型")
             hist_df = data['hist']
@@ -260,4 +259,22 @@ if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
                 
             fig.update_layout(
                 xaxis_title="日期", yaxis_title="價格 (NTD)",
-                template="
+                template="plotly_white", height=380,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                margin=dict(l=10, r=10, t=10, b=10)
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            with st.expander("🔍 點此查看：數字、評分與預估線的依據與限制是什麼？"):
+                st.markdown("""
+                - **綜合評分怎麼算？**：結合「毛利率（賺錢能力）」、「營收年增率（成長動能）」與「月線位置（短線多空）」給予 0~100 分的綜合健康度。
+                - **AI 預估線的依據與限制**：綠色虛線是根據過去 6 個月的股價走勢斜率做出的**純數學線性延伸**。**請注意：這僅代表過去趨勢的數學投影，完全無法預測突發利多、利空或黑天鵝事件，請勿將其作為唯一買賣依據！**
+                """)
+
+        # 外部查證專區
+        with st.container(border=True):
+            st.markdown("### 🔍 獨立查證與交叉比對專區")
+            st.caption("建議點擊下方權威平台，對照真實的即時報價、技術線圖與財報細節：")
+            c_link1, c_link2, c_link3 = st.columns(3)
+            code = data["clean_code"]
+            with c_link1:
