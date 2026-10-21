@@ -199,4 +199,39 @@ if st.sidebar.button("開始輕鬆分析"):
         st.subheader("💡 系統白話文總結與分析原因")
         
         if data['badge'] == 'success':
-            st.success(f"🎯 **{data['action']}
+            st.success(f"🎯 **{data['action']}**")
+        elif data['badge'] == 'info':
+            st.info(f"⚖️ **{data['action']}**")
+        else:
+            st.error(f"⚠️ **{data['action']}**")
+            
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("### ✅ **為什麼看好（優點）**")
+            for pro in data['pros']:
+                st.markdown(f"- {pro}")
+        with c2:
+            st.markdown("### ⚠️ **需要注意的風險（缺點）**")
+            for con in data['cons']:
+                st.markdown(f"- {con}")
+
+        # 4. 資金配置建議
+        st.markdown("---")
+        st.subheader(f"💰 給「{user_profile.split(' ')[0]}」的親民資金建議")
+        
+        lot_price = data['current_price'] * 1000
+        if data["is_etf"]:
+            advice_msg = f"這檔 ETF 一張大約 **{lot_price:,.0f} 元**。因為它本身已經幫你分散買了幾十檔好股票，非常適合當作核心資產。資金較少時可以直接透過 **零股交易** 或每月定期定額，慢慢存張數領股息！"
+        else:
+            advice_msg = f"這是一檔個股，一張大約 **{lot_price:,.0f} 元**。建議不要把所有資金壓在單一公司，採用分批買進的方式會比較安全。"
+        st.markdown(f"- **適合怎麼買**：{advice_msg}")
+
+        # 5. 同類型好朋友推薦
+        sector_info = PEER_GROUPS.get(ticker_input, {"sector": "熱門精選族群", "peers": [("0050", "元大台灣50"), ("2330", "台積電"), ("2317", "鴻海")]})
+        st.markdown("---")
+        st.subheader(f"🔗 同類型的其他好朋友標的（{sector_info['sector']}）")
+        
+        p_cols = st.columns(len(sector_info['peers']))
+        for i, (p_code, p_name) in enumerate(sector_info['peers']):
+            with p_cols[i]:
+                st.markdown
