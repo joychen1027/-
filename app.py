@@ -5,14 +5,14 @@ import yfinance as yf
 from datetime import datetime
 import plotly.graph_objects as go
 
-# 頁面基本設定 (預設展開邊欄、質感標題)
+# 頁面基本設定 (質感標題與佈局)
 st.set_page_config(
     page_title="台股智慧選股與 ETF 決策助理", 
     page_icon="📈", 
     layout="wide"
 )
 
-# 隱藏預設的主選單與頁尾 Streamlit 標記，提升專業感
+# 隱藏預設的主選單與頁尾 Streamlit 標記，提升視覺質感
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -35,7 +35,7 @@ user_profile = st.sidebar.selectbox(
     [
         "小資新手族 (每月幾千元，定期定額為主)", 
         "穩健上班族 (有 10~30 萬積蓄，想穩穩配置)", 
-        "高資產族 (資金充裕，注重資產防禦與效率)"
+        "高資產族 (資金充裕，注重資產防衛與效率)"
     ]
 )
 
@@ -109,20 +109,4 @@ PEER_GROUPS = {
 @st.cache_data
 def get_analysis(ticker, is_etf_flag):
     try:
-        stock = yf.Ticker(ticker)
-        info = stock.info
-        hist = stock.history(period="6mo")
-        
-        if hist.empty:
-            return {"success": False, "error": f"找不到代號 {ticker} 的歷史價格資料。"}
-            
-        current_price = hist['Close'].iloc[-1]
-        latest_date = hist.index[-1].strftime('%Y-%m-%d')
-        fetch_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        clean_code = ticker.replace(".TW", "").replace(".TWO", "")
-        source_url = f"https://tw.stock.yahoo.com/quote/{clean_code}"
-        
-        name = TAIWAN_NAMES_DICT.get(clean_code) or info.get('longName') or info.get('shortName') or f"台股代號 {clean_code}"
-        
-        if is_etf_flag:
-            fund_size = 6700 if clean_code == "00878" else 35
+        stock = yf
