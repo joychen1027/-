@@ -90,7 +90,7 @@ def get_analysis(ticker, is_etf_flag):
             
             score = 78.0
             pros = [
-                f"【總經與宏觀】全球資金在利率循環與地緣政治波動下，高股息 ETF 具備較強的現金流防禦特性。",
+                "【總經與宏觀】全球資金在利率循環與地緣政治波動下，高股息 ETF 具備較強的現金流防禦特性。",
                 f"【基本面與流動性】基金規模達 {fund_size} 億元以上，流動性充裕，具備高度分散單一企業倒閉風險的優勢。",
                 f"【收益表現】近期預估/歷史年化殖利率約落在 {dividend_yield}%，內扣總費率約 {expense_ratio}%，成本在同級中屬合理範圍。"
             ]
@@ -107,13 +107,24 @@ def get_analysis(ticker, is_etf_flag):
                 badge = "info"
                 
             return {
-                "is_etf": True, "name": name, "current_price": current_price,
-                "latest_date": latest_date, "fetch_timestamp": fetch_timestamp, "source_url": source_url,
-                "metric1_name": "基金規模", "metric1_val": f"{fund_size} 億",
-                "metric2_name": "預估殖利率", "metric2_val": f"{dividend_yield}%",
-                "metric3_name": "內扣總費率", "metric3_val": f"{expense_ratio}%",
-                "score": score, "action": action, "badge": badge,
-                "pros": pros, "cons": cons, "success": True
+                "is_etf": True,
+                "name": name,
+                "current_price": current_price,
+                "latest_date": latest_date,
+                "fetch_timestamp": fetch_timestamp,
+                "source_url": source_url,
+                "metric1_name": "基金規模",
+                "metric1_val": f"{fund_size} 億",
+                "metric2_name": "預估殖利率",
+                "metric2_val": f"{dividend_yield}%",
+                "metric3_name": "內扣總費率",
+                "metric3_val": f"{expense_ratio}%",
+                "score": score,
+                "action": action,
+                "badge": badge,
+                "pros": pros,
+                "cons": cons,
+                "success": True
             }
         else:
             # --- 個股專屬邏輯（結合產業供應鏈與技術面） ---
@@ -132,4 +143,39 @@ def get_analysis(ticker, is_etf_flag):
                 cons.append(f"【利潤壓力】毛利率偏低 ({gross_margin:.1f}%)，易受全球原物料成本或價格戰侵蝕。")
                 
             if revenue_growth > 5:
-                score
+                score += 20
+                pros.append(f"【成長動能】最新營收年增率達 {revenue_growth:.1f}%，呼應終端需求的實質復甦。")
+            else:
+                cons.append(f"【成長趨緩】營收年增率較平緩或呈微幅衰退 ({revenue_growth:.1f}%)，短線動能需持續觀察。")
+                
+            if current_price > ma20:
+                score += 10
+                pros.append("【技術面】股價位於月線（20日均線）之上，短線多方佔優。")
+            else:
+                cons.append("【技術面】股價目前處於月線之下，短線籌碼正在整理，上檔逢壓。")
+                
+            score = max(0.0, min(100.0, score))
+            
+            if score >= 75:
+                action = "基本面與技術面俱佳（建議依個人策略分批逢低佈局）"
+                badge = "success"
+            elif score >= 50:
+                action = "區間震盪整理（建議列入觀察名單，等待技術面突破）"
+                badge = "info"
+            else:
+                action = "風險評估宜保守（基本面或動能訊號較弱，建議暫時觀望）"
+                badge = "error"
+                
+            return {
+                "is_etf": False,
+                "name": name,
+                "current_price": current_price,
+                "latest_date": latest_date,
+                "fetch_timestamp": fetch_timestamp,
+                "source_url": source_url,
+                "metric1_name": "本益比 (PE)",
+                "metric1_val": f"{pe_ratio:.1f} 倍" if isinstance(pe_ratio, (int, float)) else "N/A",
+                "metric2_name": "毛利率",
+                "metric2_val": f"{gross_margin:.1f}%",
+                "metric3_name": "營收年增率",
+                "metric3_val":
