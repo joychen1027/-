@@ -129,11 +129,10 @@ def get_analysis(ticker, is_etf_flag):
         name = TAIWAN_NAMES_DICT.get(clean_code) or info.get('longName') or info.get('shortName') or f"台股代號 {clean_code}"
         
         if is_etf_flag:
-            # --- ETF 專屬邏輯（2026 最新市場現況數據） ---
             if clean_code == "00878":
-                fund_size = 6700      # 基金規模約 6,700 億
-                dividend_yield = 7.8  # 年化殖利率約 7.8%
-                expense_ratio = 0.28  # 內扣總費率 0.28%
+                fund_size = 6700
+                dividend_yield = 7.8
+                expense_ratio = 0.28
             else:
                 fund_size = 3500
                 dividend_yield = 6.2
@@ -150,13 +149,9 @@ def get_analysis(ticker, is_etf_flag):
                 "【機會成本】ETF 屬被動追蹤，無法享用單一個股飆翻倍的超額爆發力。"
             ]
             
-            if score >= 75:
-                action = "分批逢低承接（適合長期穩健配置與現金流規劃）"
-                badge = "success"
-            else:
-                action = "區間盤整觀望（建議分批佈局，不宜一次重壓）"
-                badge = "info"
-                
+            action = "分批逢低承接（適合長期穩健配置與現金流規劃）" if score >= 75 else "區間盤整觀望（建議分批佈局，不宜一次重壓）"
+            badge = "success" if score >= 75 else "info"
+            
             return {
                 "is_etf": True, 
                 "name": name, 
@@ -180,7 +175,6 @@ def get_analysis(ticker, is_etf_flag):
                 "hist": hist
             }
         else:
-            # --- 個股專屬邏輯 ---
             ma20 = float(hist['Close'].rolling(window=20).mean().iloc[-1]) if len(hist) >= 20 else current_price
             gross_margin = float(info.get('grossMargins') or 0.25) * 100
             pe_ratio = info.get('trailingPE') or info.get('forwardPE') or 18.0
@@ -317,96 +311,4 @@ if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
                 ))
                 
             fig.update_layout(
-                xaxis_title="日期",
-                yaxis_title="價格 (NTD)",
-                template="plotly_white",
-                height=380,
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                margin=dict(l=10, r=10, t=10, b=10)
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            st.caption("💡 **趨勢線說明**：藍線為實際收盤價，橘點線為 20 日月線，綠虛線為基於過去 6 個月斜率延伸之線性回歸預估延伸線（僅供數學趨勢參考，不代表未來絕對走勢）。")
-
-        # --- 4. 獨立查證與外部權威圖表連結專區 ---
-        with st.container(border=True):
-            st.markdown("### 🔍 獨立查證與交叉比對專區")
-            st.caption("為避免盲目依賴單一 AI 數學模型，建議點擊下方權威平台，對照真實的技術線圖、法人籌碼與財報細節：")
-            c_link1, c_link2, c_link3 = st.columns(3)
-            code = data["clean_code"]
-            with c_link1:
-                st.link_button("📈 Yahoo 股市技術圖", f"https://tw.stock.yahoo.com/quote/{code}/technical-chart", use_container_width=True)
-            with c_link2:
-                st.link_button("📊 Goodinfo! 股市資訊網", f"https://goodinfo.tw/StockInfo/StockDetail.asp?STOCK_ID={code}", use_container_width=True)
-            with c_link3:
-                st.link_button("📉 TradingView 專業圖表", f"https://www.tradingview.com/symbols/TWSE-{code}/", use_container_width=True)
-
-        # --- 5. 深度專業觀點與多維度解析 ---
-        with st.container(border=True):
-            st.markdown("### 💡 深度專業觀點與多維度解析")
-            
-            if data['badge'] == 'success':
-                st.success(f"🎯 **策略方向：{data['action']}**")
-            elif data['badge'] == 'info':
-                st.info(f"⚖️ **策略方向：{data['action']}**")
-            else:
-                st.error(f"⚠️ **策略方向：{data['action']}**")
-                
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown("##### ✅ **正向利多與優勢**")
-                for pro in data['pros']:
-                    st.markdown(f"- {pro}")
-            with c2:
-                st.markdown("##### ⚠️ **潛在風險與總經變數**")
-                for con in data['cons']:
-                    st.markdown(f"- {con}")
-
-        # --- 6. 獨到三大族群專屬資金策略 ---
-        with st.container(border=True):
-            user_tag = user_profile.split(' ')[0]
-            st.markdown(f"### 💰 給「{user_tag}」的獨到資金配置策略")
-            
-            lot_price = data['current_price'] * 1000
-            
-            if "小資新手族" in user_profile:
-                if data["is_etf"]:
-                    strategy_desc = f"資金有限時，最怕遇到市場震盪就信心崩潰。此檔 ETF 每張約 **NT$ {lot_price:,.0f} 元**，對小資族而言門檻較高。強烈建議透過 **零股交易** 或 **定期定額**（每月固定幾千元），將成本平均分攤，藉由時間複利安心累積資產，不必一次買到一張。"
-                else:
-                    strategy_desc = f"個股波動劇烈，單價約 **NT$ {lot_price:,.0f} 元**（一張）。小資新手切勿將資金集中於單一個股。若看好其基本面，務必以「零股」小額參與，並嚴格設定停損點，避免因短期回檔而影響生活現金流。"
-            elif "穩健上班族" in user_profile:
-                if data["is_etf"]:
-                    strategy_desc = f"身為上班族，核心目標是「用最少的時間成本換取穩健的資產增值」。這檔 ETF 很適合當作資產配置的**現金流核心**。建議採取「薪水撥款後自動扣款」的定期定額策略，搭配市場大跌時的「不定期加碼（金字塔型買法）」方式，穩穩打造被動收入。"
-                else:
-                    strategy_desc = f"上班族工作繁忙，不宜短線進出個股。若要配置此檔個股，應將其視為**衛星資產**（總資金佔比不宜超過 15%~20%），並採用 **分 4~5 次、每跌 5% 加碼一次** 的價值分批建倉法，降低心理壓力。"
-            else:
-                if data["is_etf"]:
-                    strategy_desc = f"資金部位較大時，首重**流動性與抗通膨效率**。雖然此檔 ETF 流動性極佳，但若一次性大筆敲進容易買在波段高點。建議採用「分三批佈局（例如 30%、30%、40%）」或逢月線支撐再行大舉敲進，並須留意大額配息在稅務上的級距影響。"
-                else:
-                    strategy_desc = f"高資產族群配置個股時，應格外重視**風險報酬比與總經週期**。單筆買進一張約 **NT$ {lot_price:,.0f} 元**，資金雖然充裕但仍須嚴守資金效率。建議搭配總體經濟數據與產業景氣循環，利用股價回測年線或月線時分批承接，並做好資產部位的停利停損規劃。"
-
-            st.markdown(f"👉 **專屬執行方針**：{strategy_desc}")
-
-        # --- 7. 同業關聯標的推薦（含觀察原因解析） ---
-        sector_info = PEER_GROUPS.get(ticker_input, {
-            "sector": "市場焦點精選族群", 
-            "peers": [
-                ("0050", "元大台灣50", "追蹤大盤市值表現，適合作為檢視整體台股脈動的基準指標。"),
-                ("2330", "台積電", "台股權王與半導體中流砥柱，牽動大盤與電子類股的整體多空走勢。"),
-                ("2317", "鴻海", "大型權值與全球代工龍頭，可作為觀察台灣電子出口與大企業接單氣氛的窗口。")
-            ]
-        })
-        
-        with st.container(border=True):
-            st.markdown(f"### 🔗 同族群與產業鏈關聯標的（{sector_info['sector']}）")
-            st.caption("💡 **為什麼建議觀察這些標的**：透過比較同業或供應鏈上下游的表現，可以幫你看出資金是全面輪動還是單點獨強，做出更全面的判斷。")
-            
-            p_cols = st.columns(len(sector_info['peers']))
-            for i, (p_code, p_name, p_reason) in enumerate(sector_info['peers']):
-                with p_cols[i]:
-                    st.markdown(f"**🏢 {p_name}** (`{p_code}`)")
-                    st.caption(f"👉 {p_reason}")
-
-        # --- 8. 頁尾折疊系統資訊 ---
-        with st.expander("ℹ️ 系統查詢資訊與免責聲明"):
-            st.caption(f"⏱️ 系統查詢時間：`{data['fetch_timestamp']}` ｜ 資料來源：Yahoo Finance & 台灣證券交易所")
-            st.caption("⚠️ **免責聲明**：本工具提供之數據、總經觀點與分析僅供教學與參考用途，不構成任何形式之買賣推薦或投資建議。投資具備一定風險，請獨立評估並自負盈虧。")
+                xaxis
