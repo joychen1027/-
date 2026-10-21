@@ -64,7 +64,7 @@ def get_analysis(ticker, is_etf_flag):
     try:
         stock = yf.Ticker(ticker)
         info = stock.info
-        hist = stock.history(period="6mo") # 拉長至 6 個月以利趨勢觀察
+        hist = stock.history(period="6mo")
         
         if hist.empty:
             return {"success": False, "error": f"找不到代號 {ticker} 的歷史價格資料。"}
@@ -238,7 +238,6 @@ if st.sidebar.button("開始深度分析"):
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
             margin=dict(l=20, r=20, t=40, b=20)
         )
-        st.plotly_fig = fig
         st.plotly_chart(fig, use_container_width=True)
         st.caption("💡 **趨勢線說明**：藍線為實際收盤價，橘點線為 20 日月線，綠虛線為基於近期走勢的線性回歸預估延伸線（僅供數學趨勢參考，不代表未來絕對走勢）。")
 
@@ -259,17 +258,5 @@ if st.sidebar.button("開始深度分析"):
             for pro in data['pros']:
                 st.markdown(f"- {pro}")
         with c2:
-            st.markdown("### ⚠️ **潛在風險與總經變數**")
-            for con in data['cons']:
-                st.markdown(f"- {con}")
-
-        # 5. 量身打造的三大族群專屬建議（擺脫千篇一律）
-        st.markdown("---")
-        user_tag = user_profile.split(' ')[0]
-        st.subheader(f"💰 給「{user_tag}」的獨到資金配置策略")
-        
-        lot_price = data['current_price'] * 1000
-        
-        if "小資新手族" in user_profile:
-            if data["is_etf"]:
-                strategy_desc = f"資金有限時，最怕遇到市場震盪就信心崩潰。此檔 ETF
+            st.markdown("
+                        
