@@ -71,7 +71,7 @@ def get_analysis(ticker, is_etf_flag):
         # 取得最新資料交易日 (格式：YYYY-MM-DD)
         latest_date = hist.index[-1].strftime('%Y-%m-%d') if not hist.empty else "未知"
         
-        # 📌 取得程式當下向 Yahoo 抓取資料的時間點 (Timestamp)
+        # 取得程式當下向 Yahoo 抓取資料的時間點 (Timestamp)
         fetch_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         # 產生來源網址
@@ -184,7 +184,7 @@ if st.sidebar.button("開始輕鬆分析"):
         target_type_str = "📦 ETF (一籃子股票)" if data["is_etf"] else "🏢 個股 (單一企業)"
         st.success(f"📌 你正在檢視：**{data['name']} ({ticker_input})** ｜ 類型：**{target_type_str}** ｜ 現價約 **{data['current_price']:.2f} 元**")
         
-        # 📌 顯示最新交易日、抓取時間點與來源網址
+        # 顯示最新交易日、抓取時間點與來源網址
         st.caption(f"📅 **最近交易日**：`{data['latest_date']}` ｜ ⏱️ **系統查詢時間**：`{data['fetch_timestamp']}` ｜ 🔗 **資料來源**：[Yahoo 股市]({data['source_url']})")
         
         # 2. 核心指標卡片
@@ -199,29 +199,4 @@ if st.sidebar.button("開始輕鬆分析"):
         st.subheader("💡 系統白話文總結與分析原因")
         
         if data['badge'] == 'success':
-            st.success(f"🎯 **{data['action']}**")
-        elif data['badge'] == 'info':
-            st.info(f"⚖️ **{data['action']}**")
-        else:
-            st.error(f"⚠️ **{data['action']}**")
-            
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown("### ✅ **為什麼看好（優點）**")
-            for pro in data['pros']:
-                st.markdown(f"- {pro}")
-        with c2:
-            st.markdown("### ⚠️ **需要注意的風險（缺點）**")
-            for con in data['cons']:
-                st.markdown(f"- {con}")
-
-        # 4. 資金配置建議
-        st.markdown("---")
-        st.subheader(f"💰 給「{user_profile.split(' ')[0]}」的親民資金建議")
-        
-        lot_price = data['current_price'] * 1000
-        if data["is_etf"]:
-            advice_msg = f"這檔 ETF 一張大約 **{lot_price:,.0f} 元**。因為它本身已經幫你分散買了幾十檔好股票，非常適合當作核心資產。資金較少時可以直接透過 **零股交易** 或每月定期定額，慢慢存張數領股息！"
-        else:
-            advice_msg = f"這是一檔個股，一張大約 **{lot_price:,.0f} 元**。建議不要把所有資金壓在單一公司，採用分批買進的方式會比較安全。"
-        st.markdown(f"-
+            st.success(f"🎯 **{data['action']}
