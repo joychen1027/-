@@ -61,7 +61,7 @@ if st.sidebar.button("開始檢視"):
         # 建立主畫面圖表
         fig = make_subplots(
             rows=1, cols=2, 
-            subplotTitles=("【主坐標】法人籌碼多寡 vs 買賣超", "【第一象限細部】良率 vs 年營收")
+            subplot_titles=("【主坐標】法人籌碼多寡 vs 買賣超", "【第一象限細部】良率 vs 年營收")
         )
         
         # 1. 主坐標系圖表
