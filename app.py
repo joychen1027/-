@@ -272,19 +272,4 @@ if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
 
         # --- 3. 趨勢與 30 日 AI 預估圖表 ---
         with st.container(border=True):
-            st.markdown("### 📈 股價趨勢分析與未來 30 日 AI 預估模型")
-            hist_df = data['hist']
-            fig = go.Figure()
-            
-            # 實際收盤價
-            fig.add_trace(go.Scatter(
-                x=hist_df.index, y=hist_df['Close'],
-                mode='lines', name='歷史收盤價',
-                line=dict(color='#0052CC', width=2.5)
-            ))
-            
-            # 20日均線 (月線)
-            ma20_series = hist_df['Close'].rolling(window=20).mean()
-            fig.add_trace(go.Scatter(
-                x=hist_df.index, y=ma20_series,
-                mode='lines', name='20日均線 (月線)',
+            st.markdown("### 📈 股價趨
