@@ -22,8 +22,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 主標題區塊
-st.title("🎯 台股智慧選股與 ETF 決策助理（中文智能修復版）")
+# 主標題區塊（已移除版本字樣）
+st.title("🎯 台股智慧選股與 ETF 決策助理")
 st.caption("結合國際總經、產業護城河、自動中文對照、AI 趨勢預估線圖與避坑檢核機制！")
 
 # 側邊欄設定
@@ -42,7 +42,7 @@ user_profile = st.sidebar.selectbox(
 
 is_etf = ticker_input.startswith("00")
 
-# 常見熱門標的中文快取字典（作為第一層快速對照）
+# 常見熱門標的中文快取字典
 TAIWAN_NAMES_DICT = {
     "0050": "元大台灣50", "0056": "元大高股息", "00878": "國泰永續高股息",
     "00713": "元大台灣高息低波", "00919": "群益台灣精選高息", "006208": "富邦台50",
@@ -86,18 +86,13 @@ def get_analysis(ticker, is_etf_flag):
         fetch_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         source_url = f"https://tw.stock.yahoo.com/quote/{clean_code}"
         
-        # 智能化中文名稱解析機制：
-        # 1. 先從快取字典找
-        # 2. 若無，從 yfinance info 抓取 longName 或 shortName
-        # 3. 若抓到的是英文或無中文，自動進行智慧備用命名
         raw_name = info.get('longName') or info.get('shortName') or ""
         
         if clean_code in TAIWAN_NAMES_DICT:
             name = TAIWAN_NAMES_DICT[clean_code]
-        elif raw_name and not re.search(r'[a-zA-Z]{5,}', raw_name):  # 若名稱包含中文字元
+        elif raw_name and not re.search(r'[a-zA-Z]{5,}', raw_name):
             name = raw_name
         else:
-            # 如果 Yahoo 回傳的是純英文（例如 Hon Hai Precision Industry），給予美觀的備用中文顯示
             name = f"台股企業 ({clean_code})"
         
         if is_etf_flag:
@@ -248,7 +243,7 @@ if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
             st.plotly_chart(fig, use_container_width=True)
             st.caption("💡 **趨勢線說明**：藍線為實際收盤價，橘點線為 20 日月線，綠虛線為線性回歸預估延伸線（僅供數學參考）。")
 
-        # 外部查證專區（Yahoo 股票主頁）
+        # 外部查證專區
         with st.container(border=True):
             st.markdown("### 🔍 獨立查證與交叉比對專區")
             st.caption("建議點擊下方權威平台，對照真實的即時報價、技術線圖與財報細節：")
