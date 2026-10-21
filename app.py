@@ -5,16 +5,22 @@ import yfinance as yf
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-st.set_page_config(page_title="智慧飆股／爛股定位與同業推薦系統", layout="wide")
+st.set_page_config(page_title="智慧飆股／爛股定位與分眾資金規劃系統", layout="wide")
 
-st.title("🎯 智慧飆股／爛股定位與同業推薦決策系統")
-st.markdown("結合 **法人籌碼**、**真實營收動能** 與 **同業相似標的推薦**，為你進行全方位產業掃描！")
+st.title("🎯 智慧飆股／爛股定位與分眾資金規劃決策系統")
+st.markdown("結合 **法人籌碼**、**真實營收動能** 與 **分眾化資金配置建議**，為你量身打造投資組合！")
 
-st.sidebar.header("設定股票代號")
-ticker_input = st.sidebar.text_input("輸入台股代號 (例如: 2330, 3711, 2317, 2454)", value="3711")
+st.sidebar.header("設定投資參數")
+ticker_input = st.sidebar.text_input("輸入台股主打代號 (例如: 2330, 3711, 2317)", value="3711")
 taiwan_ticker = f"{ticker_input}.TW"
 
-# --- 【同業相似股票對照庫】 ---
+# 讓使用者在側邊欄選擇自身所處的資金族群
+user_profile = st.sidebar.selectbox(
+    "選擇您的資金與投資族群", 
+    ["小資積蓄族 (資金有限，偏好穩健或零股)", "穩健中產族 (有一定本金，追求資產配置)", "高資產富裕族 (資金雄厚，偏好高價權值與大部位佈局)"]
+)
+
+# --- 【同業相似股票與分眾推薦庫】 ---
 PEER_GROUPS = {
     "2330": {"sector": "半導體晶圓代工", "peers": [("2303", "聯電"), ("3711", "日月光投控"), ("6415", "矽力-KY")]},
     "3711": {"sector": "半導體封測", "peers": [("2330", "台積電"), ("2449", "京元電子"), ("3265", "台星科")]},
@@ -131,7 +137,7 @@ def get_stock_deep_analysis(ticker):
         return {"success": False, "error": str(e)}
 
 if st.sidebar.button("開始深度智慧檢視"):
-    with st.spinner('正在分析財報、籌碼與同業相似標的中...'):
+    with st.spinner('正在分析財報、籌碼與量身打造資金策略中...'):
         data = get_stock_deep_analysis(ticker_input)
         
     if not data["success"]:
@@ -139,6 +145,7 @@ if st.sidebar.button("開始深度智慧檢視"):
     else:
         st.success(f"成功載入：{data['name']} ({ticker_input}) | 所屬產業：{data['sector']}")
         
+        # 繪製圖表
         fig = make_subplots(
             rows=1, cols=2, 
             subplot_titles=("【主坐標】法人籌碼多寡 vs 買賣超", "【第一象限細部】毛利 vs 營收動能")
@@ -176,6 +183,7 @@ if st.sidebar.button("開始深度智慧檢視"):
         fig.update_layout(height=450, showlegend=False, title_text=f"{ticker_input} 多維度綜合診斷圖表")
         st.plotly_chart(fig, use_container_width=True)
         
+        # 核心評分與數據卡片
         st.markdown("---")
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("綜合智慧評分", f"{data['score']:.1f} 分")
@@ -183,6 +191,7 @@ if st.sidebar.button("開始深度智慧檢視"):
         col3.metric("本益比 (P/E)", f"{data['pe_ratio']:.1f} 倍")
         col4.metric("市值估算", f"{data['market_cap']:.1f} 億")
         
+        # 推薦或不推薦原因拆解
         st.markdown("---")
         st.subheader("📋 系統智慧決策與推薦原因拆解")
         
@@ -201,10 +210,44 @@ if st.sidebar.button("開始深度智慧檢視"):
             st.markdown("### ⚠️ **【不推薦 / 隱憂風險】**")
             for con in data['cons']: st.markdown(f"- {con}")
 
+        # --- 【新增：分眾化資金配置與建議策略】 ---
+        st.markdown("---")
+        st.subheader(f"💰 針對「{user_profile.split(' ')[0]}」的量身資金配置與建議")
+        
+        current_p = data['current_price']
+        lot_price = current_p * 1000  # 一張股票的金額
+        
+        if "小資" in user_profile:
+            suggested_budget = "1 萬元 ～ 5 萬元"
+            strategy_text = f"""
+            - **建議佈局方式**：資金較有限，強烈建議透過 **「零股交易」** 或定期定額參與。
+            - **張數/股數規劃**：以目前股價 `{current_p:.2f}` 元計算，一張需 `{lot_price:,.0f}` 元。建議每次投入 3,000 ~ 5,000 元買進零股，分 5 至 10 次慢慢建立部位。
+            - **標的屬性提醒**：可優先挑選同產業中股價較親民、具備高殖利率的穩健標的，避免資金過度集中單一高價股。
+            """
+        elif "穩健中產" in user_profile:
+            suggested_budget = "20 萬元 ～ 100 萬元"
+            strategy_text = f"""
+            - **建議佈局方式**：採取 **「分批加碼法」**（例如分 3 檔資金：首批 40%、回檔再買 30%、突破追價 30%）。
+            - **張數/股數規劃**：以目前股價 `{current_p:.2f}` 元計算，每次可配置 1 至 2 張。總投資部位控制在個人可投資資產的 15% 以內。
+            - **風險控管**：若跌破 20 日均線且法人連續賣超，建議執行 5% 停損紀律。
+            """
+        else:  # 高資產富裕族
+            suggested_budget = "200 萬元 ～ 1,000 萬元以上"
+            strategy_text = f"""
+            - **建議佈局方式**：資金雄厚，適合直接配置高價權值股或產業龍頭（如台積電、大型控股公司）。
+            - **張數/股數規劃**：可以一次進場數張（例如 5 張以上），並透過大額資金優勢在支撐區建立核心持股。
+            - **資產配置建議**：建議將資金分為「70% 核心穩健資產（大型權值）」與「30% 衛星成長資產（如本檔潛力標的）」，兼顧收益與爆發力。
+            """
+            
+        col_b1, col_b2 = st.columns([1, 2])
+        with col_b1:
+            st.metric("建議總投入資金", suggested_budget)
+        with col_b2:
+            st.markdown(f"**操作策略與資金配置細節：**\n{strategy_text}")
+
+        # 同業相似推薦標的
         st.markdown("---")
         st.subheader(f"🔗 同業相似優質推薦標的（屬於：{data['sector']}）")
-        st.markdown("當您在關注此檔股票時，以下為同一產業鏈中表現具指標性的相似推薦觀察標的：")
-        
         peer_cols = st.columns(len(data['peers']))
         for idx, (peer_code, peer_name) in enumerate(data['peers']):
             with peer_cols[idx]:
@@ -217,29 +260,8 @@ if st.sidebar.button("開始深度智慧檢視"):
                 else:
                     st.info("⚖️ 穩健觀察標的")
 
+        # 統整數據表
         st.markdown("---")
         st.subheader("📊 關鍵財務與籌碼統整數據表")
         summary_df = pd.DataFrame({
             "評估構面": ["籌碼面", "籌碼面", "基本面", "基本面", "技術面", "評價面"],
-            "指標名稱": ["法人持股比例", "近期買賣超金額", "毛利率", "年營收年增率 (YoY)", "20日均線趨勢", "本益比 (PE)"],
-            "實際數值": [
-                f"{data['holder_pct']:.1f}%",
-                f"{data['net_buy_sell']:.1f} 百萬",
-                f"{data['gross_margin']:.1f}%",
-                f"{data['revenue_growth']:.2f}%",
-                "多頭排列 (站上MA20)" if data['is_bullish'] else "短線回檔 (跌破MA20)",
-                f"{data['pe_ratio']:.1f} 倍"
-            ],
-            "狀態評判": [
-                "籌碼集中" if data['holder_pct'] > 50 else "籌碼分散",
-                "資金流入" if data['net_buy_sell'] > 0 else "資金流出",
-                "獲利優異" if data['gross_margin'] > 25 else "獲利一般",
-                "營收爆發" if data['revenue_growth'] > 15 else ("穩健成長" if data['revenue_growth'] > 0 else "營收衰退"),
-                "趨勢向上" if data['is_bullish'] else "趨勢向下",
-                "合理區間" if 10 <= data['pe_ratio'] <= 30 else "需留意評價"
-            ]
-        })
-        st.table(summary_df)
-        
-        st.markdown("---")
-        st.caption("⚠️ **免責聲明**：本系統之量化評分、同業推薦與統整數據僅供參考，不具任何投資勸誘、保證獲利或買賣建議。投資人應獨立思考並自負盈虧。")
