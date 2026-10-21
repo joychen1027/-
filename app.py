@@ -22,13 +22,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 主標題區塊（已移除版本字樣）
+# 主標題區塊
 st.title("🎯 台股智慧選股與 ETF 決策助理")
-st.caption("結合國際總經、產業護城河、自動中文對照、AI 趨勢預估線圖與避坑檢核機制！")
+st.caption("結合國際總經、白話解說、AI 趨勢預估與風險快篩的智能投資夥伴！")
 
-# 側邊欄設定
-st.sidebar.header("⚙️ 條件設定")
-ticker_input = st.sidebar.text_input("輸入台股代號", value="2330", help="個股如: 2330, 2317, 2603 ｜ ETF如: 00878, 0050").strip().upper()
+# --- 優先順序 1：首頁與名詞白話化、新手引導 ---
+st.sidebar.header("⚙️ 查閱設定")
+ticker_input = st.sidebar.text_input("輸入台股代號", value="2330", help="例如：台積電輸 2330 ｜ 高股息ETF輸 00878").strip().upper()
 taiwan_ticker = f"{ticker_input}.TW"
 
 user_profile = st.sidebar.selectbox(
@@ -41,6 +41,14 @@ user_profile = st.sidebar.selectbox(
 )
 
 is_etf = ticker_input.startswith("00")
+
+# 側邊欄新手引導
+with st.sidebar.expander("💡 第一次使用？新手 3 步驟指南"):
+    st.markdown("""
+    1. **輸入代號**：在上方輸入你想查的台股或 ETF 代號（如 2330、00878）。
+    2. **選擇族群**：選擇最符合你現況的資金規模，系統會給予專屬建議。
+    3. **點擊分析**：按下下方按鈕，直接看最上方的「風險總結」與評分！
+    """)
 
 # 常見熱門標的中文快取字典
 TAIWAN_NAMES_DICT = {
@@ -102,16 +110,16 @@ def get_analysis(ticker, is_etf_flag):
                 
             score = 78.0
             pros = [
-                "【總經宏觀】全球資金在利率循環與地緣政治波動下，高股息 ETF 具備較強的現金流防禦特性。",
-                f"【規模流動性】基金規模達 {fund_size} 億元以上，流動性充裕，具備高度分散單一企業倒閉風險的優勢。",
-                f"【收益回報】預估年化殖利率約落在 {dividend_yield}%，內扣總費率約 {expense_ratio}%，成本合理。"
+                "【資產抗震】高股息 ETF 在市場震盪時，具備較強的現金流防禦特性。",
+                f"【規模與流動性】基金規模達 {fund_size} 億元以上，買賣容易，能分散單一公司倒閉的風險。",
+                f"【預估收益】預估年化殖利率約 {dividend_yield}%，內扣費用率約 {expense_ratio}%（成本合理）。"
             ]
             cons = [
-                "【總經風險】若全球央行政策轉向或總體經濟面臨衰退，高股息資產仍會受到大盤系統性修正波及。",
-                "【機會成本】ETF 屬被動追蹤，無法享用單一個股飆翻倍的超額爆發力。"
+                "【大盤連動風險】若整體市場大跌，高股息資產仍會受到牽連而回檔。",
+                "【成長爆發力有限】ETF 屬於一籃子股票，無法享受單一飆股翻倍的超額利潤。"
             ]
             
-            action = "分批逢低承接（適合長期穩健配置與現金流規劃）" if score >= 75 else "區間盤整觀望（建議分批佈局）"
+            action = "分批逢低承接（適合長期穩健領息與資產配置）" if score >= 75 else "區間盤整觀望（建議分批佈局，不宜一次買滿）"
             badge = "success" if score >= 75 else "info"
             
             return {
@@ -134,25 +142,25 @@ def get_analysis(ticker, is_etf_flag):
             
             if gross_margin > 25:
                 score += 15
-                pros.append(f"【產業競爭力】毛利率達 {gross_margin:.1f}%，顯示公司在供應鏈中具備良好的訂價能力與護城河。")
+                pros.append(f"【獲利護城河】毛利率高達 {gross_margin:.1f}%，代表公司產品有訂價能力、賺錢能力強。")
             else:
-                cons.append(f"【利潤壓力】毛利率偏低 ({gross_margin:.1f}%)，易受原物料或市場價格戰侵蝕。")
+                cons.append(f"【利潤壓力】毛利率偏低 ({gross_margin:.1f}%)，容易受到成本上漲或價格競爭影響。")
                 
             if revenue_growth > 5:
                 score += 20
-                pros.append(f"【成長動能】最新營收年增率達 {revenue_growth:.1f}%，呼應終端需求的實質復甦。")
+                pros.append(f"【營收成長】最新營收年增率達 {revenue_growth:.1f}%，顯示業務持續擴張中。")
             else:
-                cons.append(f"【成長趨緩】營收年增率較平緩或呈微幅衰退 ({revenue_growth:.1f}%)，短線動能需持續觀察。")
+                cons.append(f"【動能趨緩】營收年增率表現平平或微幅衰退 ({revenue_growth:.1f}%)，短線爆發力較弱。")
                 
             if current_price > ma20:
                 score += 10
-                pros.append("【技術面】股價位於月線（20日均線）之上，短線多方佔優。")
+                pros.append("【技術面優勢】股價目前在 20 日月線之上，短線買盤較強。")
             else:
-                cons.append("【技術面】股價目前處於月線之下，短線籌碼正在整理，上檔逢壓。")
+                cons.append("【技術面壓力】股價目前在月線之下，短線正在整理或賣壓較重。")
                 
             score = max(0.0, min(100.0, score))
             
-            action = "基本面與技術面俱佳（建議依個人策略分批逢低佈局）" if score >= 75 else ("區間震盪整理（建議列入觀察名單）" if score >= 50 else "風險評估宜保守（建議暫時觀望）")
+            action = "基本面與技術面俱佳（可依個人策略分批買進）" if score >= 75 else ("區間震盪整理（建議列入觀察名單，等待突破）" if score >= 50 else "風險偏高（建議暫時觀望，避免接刀）")
             badge = "success" if score >= 75 else ("info" if score >= 50 else "error")
             pe_str = f"{pe_ratio:.1f} 倍" if isinstance(pe_ratio, (int, float)) else "N/A"
             
@@ -170,7 +178,7 @@ def get_analysis(ticker, is_etf_flag):
 
 # 執行分析按鈕
 if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
-    with st.spinner('正在結合國際總經與財報數據進行多維度掃描中...'):
+    with st.spinner('正在掃描財報與總經數據中...'):
         data = get_analysis(taiwan_ticker, is_etf)
         
     if not data["success"]:
@@ -178,16 +186,32 @@ if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
     else:
         target_type_str = "📦 ETF (一籃子分散資產)" if data["is_etf"] else "🏢 個股 (單一企業營運)"
         
+        # --- 優先順序 3：結果頁「摘要與風險」放最上方 ---
+        with st.container(border=True):
+            st.markdown(f"### ⚡ 一分鐘核心總結與風險快篩")
+            if data['badge'] == 'success':
+                st.success(f"🎯 **綜合評語：{data['action']}** (綜合評分：{data['score']:.1f} 分)")
+            elif data['badge'] == 'info':
+                st.info(f"⚖️ **綜合評語：{data['action']}** (綜合評分：{data['score']:.1f} 分)")
+            else:
+                st.error(f"⚠️ **綜合評語：{data['action']}** (綜合評分：{data['score']:.1f} 分)")
+            
+            # 風險提示
+            if data.get("score", 70) < 60:
+                st.warning("⚠️ **【避坑提醒】** 當前評分偏低，可能存在基本面轉弱或短線技術面破線風險，不建議盲目歐印。")
+            else:
+                st.success("✅ **【避坑提醒】** 結構基本健全，未觸發重大地雷警訊，但仍建議分批佈局。")
+
+        # 基本標題與當前價格
         with st.container(border=True):
             st.markdown(f"### **{data['name']} ({ticker_input})** ｜ {target_type_str}")
             st.markdown(f"最新價格：**NT$ {data['current_price']:.2f}** ｜ 資料日期：`{data['latest_date']}`")
-            st.info("🌐 **國際總體經濟與市場氛圍**：目前全球資本市場深受利率政策、地緣政治及供應鏈庫存調整影響。個股表現分化加劇，切勿盲目追高，應回歸企業實質獲利與資產配置規劃。")
 
         # 關鍵指標卡片
         m1, m2, m3, m4 = st.columns(4)
         with m1:
             with st.container(border=True):
-                st.metric("綜合評估分數", f"{data['score']:.1f} 分")
+                st.metric("綜合評分", f"{data['score']:.1f} 分")
         with m2:
             with st.container(border=True):
                 st.metric(data["metric1_name"], data["metric1_val"])
@@ -198,9 +222,9 @@ if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
             with st.container(border=True):
                 st.metric(data["metric3_name"], data["metric3_val"])
 
-        # 趨勢圖表
+        # --- 優先順序 2：解釋評分、數據與預估線的依據與限制 ---
         with st.container(border=True):
-            st.markdown("### 📈 股價趨勢分析與未來 30 日 AI 預估模型")
+            st.markdown("### 📈 股價趨勢與 AI 線性預估模型")
             hist_df = data['hist']
             fig = go.Figure()
             
@@ -236,88 +260,4 @@ if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
                 
             fig.update_layout(
                 xaxis_title="日期", yaxis_title="價格 (NTD)",
-                template="plotly_white", height=380,
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                margin=dict(l=10, r=10, t=10, b=10)
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            st.caption("💡 **趨勢線說明**：藍線為實際收盤價，橘點線為 20 日月線，綠虛線為線性回歸預估延伸線（僅供數學參考）。")
-
-        # 外部查證專區
-        with st.container(border=True):
-            st.markdown("### 🔍 獨立查證與交叉比對專區")
-            st.caption("建議點擊下方權威平台，對照真實的即時報價、技術線圖與財報細節：")
-            c_link1, c_link2, c_link3 = st.columns(3)
-            code = data["clean_code"]
-            with c_link1:
-                st.link_button("📈 Yahoo 股市主頁", f"https://tw.stock.yahoo.com/quote/{code}", use_container_width=True)
-            with c_link2:
-                st.link_button("📊 Goodinfo! 股市資訊網", f"https://goodinfo.tw/StockInfo/StockDetail.asp?STOCK_ID={code}", use_container_width=True)
-            with c_link3:
-                st.link_button("📉 TradingView 專業圖表", f"https://www.tradingview.com/symbols/TWSE-{code}/", use_container_width=True)
-
-        # 專業觀點
-        with st.container(border=True):
-            st.markdown("### 💡 深度專業觀點與多維度解析")
-            if data['badge'] == 'success':
-                st.success(f"🎯 **策略方向：{data['action']}**")
-            elif data['badge'] == 'info':
-                st.info(f"⚖️ **策略方向：{data['action']}**")
-            else:
-                st.error(f"⚠️ **策略方向：{data['action']}**")
-                
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown("##### ✅ **正向利多與優勢**")
-                for pro in data['pros']:
-                    st.markdown(f"- {pro}")
-            with c2:
-                st.markdown("##### ⚠️ **潛在風險與總經變數**")
-                for con in data['cons']:
-                    st.markdown(f"- {con}")
-
-        # 避坑檢核
-        with st.container(border=True):
-            st.markdown("### 🚫 避坑檢核：當前標的潛在警訊")
-            if data.get("score", 70) < 60:
-                st.warning("⚠️ **【基本面/總經警訊】** 當前綜合評分偏低或防禦力下降，建議暫時保持觀望，避免追高。")
-            else:
-                st.success("✅ **【結構評估】** 目前未觸發重大結構性警訊，但仍建議依個人資金風險屬性分批佈局。")
-
-        # 資金族群策略
-        with st.container(border=True):
-            user_tag = user_profile.split(' ')[0]
-            st.markdown(f"### 💰 給「{user_tag}」的獨到資金配置策略")
-            lot_price = data['current_price'] * 1000
-            
-            if "小資新手族" in user_profile:
-                strategy_desc = f"每張約 **NT$ {lot_price:,.0f} 元**。強烈建議透過 **零股交易** 或 **定期定額**，分攤成本並降低心理負擔。"
-            elif "穩健上班族" in user_profile:
-                strategy_desc = "適合當作資產配置的核心部位，採取薪水自動扣款的定期定額策略，搭配大跌時金字塔加碼法。"
-            else:
-                strategy_desc = f"單筆約 **NT$ {lot_price:,.0f} 元**。首重流動性與抗通膨效率，建議採分三批佈局或逢月線支撐再行承接。"
-
-            st.markdown(f"👉 **專屬執行方針**：{strategy_desc}")
-
-        # 同業與產業鏈標的
-        sector_info = PEER_GROUPS.get(ticker_input, {
-            "sector": "市場焦點精選族群", 
-            "peers": [
-                ("0050", "元大台灣50", "追蹤大盤市值表現，作為台股脈動基準。"),
-                ("2330", "台積電", "台股權王與半導體中流砥柱。"),
-                ("2317", "鴻海", "大型權值龍頭，觀察台灣電子出口氣氛。")
-            ]
-        })
-        
-        with st.container(border=True):
-            st.markdown(f"### 🔗 同族群與產業鏈關聯標的（{sector_info['sector']}）")
-            p_cols = st.columns(len(sector_info['peers']))
-            for i, (p_code, p_name, p_reason) in enumerate(sector_info['peers']):
-                with p_cols[i]:
-                    st.markdown(f"**🏢 {p_name}** (`{p_code}`)")
-                    st.caption(f"👉 {p_reason}")
-
-        # 系統資訊
-        with st.expander("ℹ️ 系統查詢資訊與免責聲明"):
-            st.caption(f"⏱️ 系統查詢時間：`{data['fetch_timestamp']}` ｜ 資料來源：Yahoo Finance & 台灣證券交易所")
-            st.caption("⚠️ 本工具提供之數據與觀點僅供教學與參考用途，不構成任何買賣推薦或投資建議。")
+                template="
