@@ -68,10 +68,10 @@ def get_analysis(ticker, is_etf_flag):
         hist = stock.history(period="3mo")
         current_price = hist['Close'].iloc[-1] if not hist.empty else 100.0
         
-        # 取得最新資料交易日 (格式：YYYY-MM-DD)
+        # 取得最新資料交易日
         latest_date = hist.index[-1].strftime('%Y-%m-%d') if not hist.empty else "未知"
         
-        # 取得程式當下向 Yahoo 抓取資料的時間點 (Timestamp)
+        # 取得程式當下向 Yahoo 抓取資料的時間點
         fetch_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         # 產生來源網址
@@ -221,17 +221,4 @@ if st.sidebar.button("開始輕鬆分析"):
         
         lot_price = data['current_price'] * 1000
         if data["is_etf"]:
-            advice_msg = f"這檔 ETF 一張大約 **{lot_price:,.0f} 元**。因為它本身已經幫你分散買了幾十檔好股票，非常適合當作核心資產。資金較少時可以直接透過 **零股交易** 或每月定期定額，慢慢存張數領股息！"
-        else:
-            advice_msg = f"這是一檔個股，一張大約 **{lot_price:,.0f} 元**。建議不要把所有資金壓在單一公司，採用分批買進的方式會比較安全。"
-        st.markdown(f"- **適合怎麼買**：{advice_msg}")
-
-        # 5. 同類型好朋友推薦
-        sector_info = PEER_GROUPS.get(ticker_input, {"sector": "熱門精選族群", "peers": [("0050", "元大台灣50"), ("2330", "台積電"), ("2317", "鴻海")]})
-        st.markdown("---")
-        st.subheader(f"🔗 同類型的其他好朋友標的（{sector_info['sector']}）")
-        
-        p_cols = st.columns(len(sector_info['peers']))
-        for i, (p_code, p_name) in enumerate(sector_info['peers']):
-            with p_cols[i]:
-                st.markdown
+            advice_msg = f"這檔 ETF
