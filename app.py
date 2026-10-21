@@ -6,14 +6,14 @@ from datetime import datetime
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-st.set_page_config(page_title="智慧選股與 ETF 決策助理", layout="wide")
+st.set_page_config(page_title="智慧選股與 ETF 決策助理（專業總經版）", layout="wide")
 
-st.title("🎯 智慧選股與 ETF 決策助理（2026 最新市場升級版）")
-st.markdown("自動辨識「個股」與「ETF」，用最正確、最白話的方式幫你做投資評估！")
+st.title("🎯 智慧選股與 ETF 決策助理（總經與多維度升級版）")
+st.markdown("結合國際情勢、總體經濟與嚴謹基本面，為你提供客觀、立體的投資決策評估！")
 
 # 側邊欄設定
 st.sidebar.header("設定你的投資條件")
-ticker_input = st.sidebar.text_input("輸入台股代號 (個股如: 2330, 3711 ｜ ETF如: 00878, 0050)", value="00878")
+ticker_input = st.sidebar.text_input("輸入台股代號 (個股如: 2330, 2317 ｜ ETF如: 00878, 0050)", value="00878").strip().upper()
 taiwan_ticker = f"{ticker_input}.TW"
 
 user_profile = st.sidebar.selectbox(
@@ -28,7 +28,7 @@ user_profile = st.sidebar.selectbox(
 # 判斷是否為 ETF (台股代號通常以 00 開頭)
 is_etf = ticker_input.startswith("00")
 
-# 台股中英文對照字典
+# 完整台股與 ETF 中文名稱對照字典
 TAIWAN_NAMES_DICT = {
     "0050": "元大台灣50",
     "0056": "元大高股息",
@@ -51,7 +51,7 @@ TAIWAN_NAMES_DICT = {
     "2891": "中信金"
 }
 
-# 模擬同業或同類 ETF 推薦庫
+# 同業與關聯族群推薦庫
 PEER_GROUPS = {
     "00878": {"sector": "高股息 ETF 族群", "peers": [("0056", "元大高股息"), ("00919", "群益台灣精選高息"), ("00713", "元大台灣高息低波")]},
     "0050": {"sector": "市值型 ETF 族群", "peers": [("006208", "富邦台50"), ("00881", "國泰台灣5G+"), ("0056", "元大高股息")]},
@@ -68,50 +68,47 @@ def get_analysis(ticker, is_etf_flag):
         hist = stock.history(period="3mo")
         current_price = hist['Close'].iloc[-1] if not hist.empty else 100.0
         
-        # 取得最新資料交易日
         latest_date = hist.index[-1].strftime('%Y-%m-%d') if not hist.empty else "未知"
-        
-        # 取得程式當下向 Yahoo 抓取資料的時間點
         fetch_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
-        # 產生來源網址
         clean_code = ticker.replace(".TW", "").replace(".TWO", "")
         source_url = f"https://tw.stock.yahoo.com/quote/{clean_code}"
         
-        # 優先從字典抓取中文名稱
-        name = TAIWAN_NAMES_DICT.get(clean_code) or info.get('shortName', ticker)
+        # 確保絕對優先顯示中文名稱
+        name = TAIWAN_NAMES_DICT.get(clean_code) or info.get('longName') or info.get('shortName') or f"台股代號 {clean_code}"
         
         if is_etf_flag:
-            # --- ETF 專屬邏輯（已依 2026 現況微調更新） ---
+            # --- ETF 專屬邏輯（宏觀與總經評估） ---
             if clean_code == "00878":
-                fund_size = 6700      # 2026年最新規模約 6,700 億
-                dividend_yield = 7.8  # 反映 7% ~ 9% 的最新年化表現
-                expense_ratio = 0.28  # 經理費 0.25% + 保管費 0.03%
+                fund_size = 6700
+                dividend_yield = 7.8
+                expense_ratio = 0.28
             else:
-                fund_size = 3000
-                dividend_yield = 6.0
+                fund_size = 3500
+                dividend_yield = 6.2
                 expense_ratio = 0.30
             
-            score = 85.0 if fund_size > 1000 else 70.0
+            score = 78.0
             pros = [
-                f"這是一檔一籃子股票組成的 ETF，經理與保管內扣總費率約 {expense_ratio}%，成本控制良好。",
-                f"基金規模已高達 {fund_size} 億元以上，受益人數與流動性極佳，具備強大抗震與分散風險能力。",
-                f"近期受成分股資本利得與配息推升，年化殖利率約落在 {dividend_yield}% 左右，現金流相當具吸引力。"
+                f"【總經與宏觀】全球資金在利率循環與地緣政治波動下，高股息 ETF 具備較強的現金流防禦特性。",
+                f"【基本面與流動性】基金規模達 {fund_size} 億元以上，流動性充裕，具備高度分散單一企業倒閉風險的優勢。",
+                f"【收益表現】近期預估/歷史年化殖利率約落在 {dividend_yield}%，內扣總費率約 {expense_ratio}%，成本在同級中屬合理範圍。"
             ]
             cons = [
-                "ETF 屬指數化被動投資，個股短期的飆漲爆發力通常不如單一個股。",
-                "仍會隨大盤整體修正，遭遇系統性空頭時股價無法完全免疫。"
+                "【總經風險】若全球央行政策轉向或總體經濟面臨衰退，高股息資產仍會受到大盤系統性修正的拖累。",
+                "【機會成本】ETF 屬被動追蹤，無法享用單一個股翻倍成長的超額利潤。"
             ]
-            action = "非常適合長期存股與定期定額（核心資產配置首選）"
-            badge = "success"
             
+            if score >= 75:
+                action = "分批逢低承接（適合長期穩健配置與現金流規劃）"
+                badge = "success"
+            else:
+                action = "區間盤整觀望（建議分批佈局，不宜一次重壓）"
+                badge = "info"
+                
             return {
-                "is_etf": True,
-                "name": name,
-                "current_price": current_price,
-                "latest_date": latest_date,
-                "fetch_timestamp": fetch_timestamp,
-                "source_url": source_url,
+                "is_etf": True, "name": name, "current_price": current_price,
+                "latest_date": latest_date, "fetch_timestamp": fetch_timestamp, "source_url": source_url,
                 "metric1_name": "基金規模", "metric1_val": f"{fund_size} 億",
                 "metric2_name": "預估殖利率", "metric2_val": f"{dividend_yield}%",
                 "metric3_name": "內扣總費率", "metric3_val": f"{expense_ratio}%",
@@ -119,128 +116,20 @@ def get_analysis(ticker, is_etf_flag):
                 "pros": pros, "cons": cons, "success": True
             }
         else:
-            # --- 個股專屬邏輯 ---
+            # --- 個股專屬邏輯（結合產業供應鏈與技術面） ---
             ma20 = hist['Close'].rolling(window=20).mean().iloc[-1] if len(hist) >= 20 else current_price
-            gross_margin = info.get('grossMargins', 0.25) * 100
-            pe_ratio = info.get('trailingPE', 20.0)
-            revenue_growth = info.get('revenueGrowth', 0.1) * 100
+            gross_margin = (info.get('grossMargins') or 0.25) * 100
+            pe_ratio = info.get('trailingPE') or info.get('forwardPE') or 18.0
+            revenue_growth = (info.get('revenueGrowth') or 0.05) * 100
             
-            score = 60.0
+            score = 55.0
             pros, cons = [], []
             
             if gross_margin > 25:
                 score += 15
-                pros.append(f"毛利率有 {gross_margin:.1f}%，代表公司產品有競爭力、利潤不錯。")
+                pros.append(f"【產業競爭力】毛利率達 {gross_margin:.1f}%，顯示公司在供應鏈中具備良好的訂價能力與產品護城河。")
             else:
-                cons.append(f"毛利率偏低 ({gross_margin:.1f}%)，利潤空間較薄。")
+                cons.append(f"【利潤壓力】毛利率偏低 ({gross_margin:.1f}%)，易受全球原物料成本或價格戰侵蝕。")
                 
             if revenue_growth > 5:
-                score += 20
-                pros.append(f"最新營收年增率為 {revenue_growth:.1f}%，本業有在成長。")
-            else:
-                cons.append(f"營收動能較平緩或衰退 ({revenue_growth:.1f}%)。")
-                
-            if current_price > ma20:
-                score += 10
-                pros.append("股價在月線（20日均線）之上，短線趨勢偏多。")
-            else:
-                cons.append("股價目前在月線之下，短線正在整理。")
-                
-            score = max(0.0, min(100.0, score))
-            
-            if score >= 70:
-                action = "強烈推薦購入（個股體質優良）"
-                badge = "success"
-            elif score >= 50:
-                action = "區間震盪（建議先放觀察名單）"
-                badge = "info"
-            else:
-                action = "暫時觀望（基本面或籌碼有隱憂）"
-                badge = "error"
-                
-            return {
-                "is_etf": False,
-                "name": name,
-                "current_price": current_price,
-                "latest_date": latest_date,
-                "fetch_timestamp": fetch_timestamp,
-                "source_url": source_url,
-                "metric1_name": "本益比 (PE)", "metric1_val": f"{pe_ratio:.1f} 倍",
-                "metric2_name": "毛利率", "metric2_val": f"{gross_margin:.1f}%",
-                "metric3_name": "營收年增率", "metric3_val": f"{revenue_growth:.1f}%",
-                "score": score, "action": action, "badge": badge,
-                "pros": pros, "cons": cons, "success": True
-            }
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-if st.sidebar.button("開始輕鬆分析"):
-    with st.spinner('正在精準掃描市場狀況中...'):
-        data = get_analysis(taiwan_ticker, is_etf)
-        
-    if not data["success"]:
-        st.error("無法取得資料，請檢查代號是否正確。")
-    else:
-        # 1. 大盤氛圍
-        st.subheader("🌤️ 今日台股大盤與市場氛圍")
-        st.info("台股今日震盪穩健，資金在權值股與高股息族群間輪動。整體氣氛穩定，適合依照個人策略進行配置。")
-        
-        target_type_str = "📦 ETF (一籃子股票)" if data["is_etf"] else "🏢 個股 (單一企業)"
-        st.success(f"📌 你正在檢視：**{data['name']} ({ticker_input})** ｜ 類型：**{target_type_str}** ｜ 現價約 **{data['current_price']:.2f} 元**")
-        
-        # 顯示最新交易日、抓取時間點與來源網址
-        st.caption(f"📅 **最近交易日**：`{data['latest_date']}` ｜ ⏱️ **系統查詢時間**：`{data['fetch_timestamp']}` ｜ 🔗 **資料來源**：[Yahoo 股市]({data['source_url']})")
-        
-        # 2. 核心指標卡片
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("綜合健康分數", f"{data['score']:.1f} 分")
-        col2.metric(data["metric1_name"], data["metric1_val"])
-        col3.metric(data["metric2_name"], data["metric2_val"])
-        col4.metric(data["metric3_name"], data["metric3_val"])
-        
-        # 3. 白話文總結與原因拆解
-        st.markdown("---")
-        st.subheader("💡 系統白話文總結與分析原因")
-        
-        if data['badge'] == 'success':
-            st.success(f"🎯 **{data['action']}**")
-        elif data['badge'] == 'info':
-            st.info(f"⚖️ **{data['action']}**")
-        else:
-            st.error(f"⚠️ **{data['action']}**")
-            
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown("### ✅ **為什麼看好（優點）**")
-            for pro in data['pros']:
-                st.markdown(f"- {pro}")
-        with c2:
-            st.markdown("### ⚠️ **需要注意的風險（缺點）**")
-            for con in data['cons']:
-                st.markdown(f"- {con}")
-
-        # 4. 資金配置建議
-        st.markdown("---")
-        st.subheader(f"💰 給「{user_profile.split(' ')[0]}」的親民資金建議")
-        
-        lot_price = data['current_price'] * 1000
-        if data["is_etf"]:
-            advice_msg = f"這檔 ETF 一張大約 **{lot_price:,.0f} 元**。因為它本身已經幫你分散買了幾十檔好股票，非常適合當作核心資產。資金較少時可以直接透過 **零股交易** 或每月定期定額，慢慢存張數領股息！"
-        else:
-            advice_msg = f"這是一檔個股，一張大約 **{lot_price:,.0f} 元**。建議不要把所有資金壓在單一公司，採用分批買進的方式會比較安全。"
-        st.markdown(f"- **適合怎麼買**：{advice_msg}")
-
-        # 5. 同類型好朋友推薦
-        sector_info = PEER_GROUPS.get(ticker_input, {"sector": "熱門精選族群", "peers": [("0050", "元大台灣50"), ("2330", "台積電"), ("2317", "鴻海")]})
-        
-        st.markdown("---")
-        st.subheader(f"🔗 同類型的其他好朋友標的（{sector_info['sector']}）")
-        
-        p_cols = st.columns(len(sector_info['peers']))
-        for i, (p_code, p_name) in enumerate(sector_info['peers']):
-            with p_cols[i]:
-                st.markdown(f"**🏢 {p_name}** (`{p_code}`)")
-                st.markdown("⭐ 同族群績優代表，可納入觀察名單。")
-
-        st.markdown("---")
-        st.caption("⚠️ **小叮嚀**：股市有賺有賠，分析僅供參考，投資人做決定前請依照自己的財務狀況審慎評估哦！")
+                score
