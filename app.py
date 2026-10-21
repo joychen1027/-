@@ -4,12 +4,11 @@ import numpy as np
 import yfinance as yf
 from datetime import datetime
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
-st.set_page_config(page_title="智慧選股與 ETF 決策助理（專業總經版）", layout="wide")
+st.set_page_config(page_title="智慧選股與 ETF 決策助理（總經與趨勢預估版）", layout="wide")
 
-st.title("🎯 智慧選股與 ETF 決策助理（總經與多維度升級版）")
-st.markdown("結合國際情勢、總體經濟與嚴謹基本面，為你提供客觀、立體的投資決策評估！")
+st.title("🎯 智慧選股與 ETF 決策助理（專業總經與趨勢預估版）")
+st.markdown("結合國際總經、產業護城河、精準族群策略與 **AI 趨勢預估線圖**，為你提供立體的投資決策評估！")
 
 # 側邊欄設定
 st.sidebar.header("設定你的投資條件")
@@ -65,20 +64,21 @@ def get_analysis(ticker, is_etf_flag):
     try:
         stock = yf.Ticker(ticker)
         info = stock.info
-        hist = stock.history(period="3mo")
-        current_price = hist['Close'].iloc[-1] if not hist.empty else 100.0
+        hist = stock.history(period="6mo") # 拉長至 6 個月以利趨勢觀察
         
-        latest_date = hist.index[-1].strftime('%Y-%m-%d') if not hist.empty else "未知"
+        if hist.empty:
+            return {"success": False, "error": f"找不到代號 {ticker} 的歷史價格資料。"}
+            
+        current_price = hist['Close'].iloc[-1]
+        latest_date = hist.index[-1].strftime('%Y-%m-%d')
         fetch_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         clean_code = ticker.replace(".TW", "").replace(".TWO", "")
         source_url = f"https://tw.stock.yahoo.com/quote/{clean_code}"
         
-        # 確保絕對優先顯示中文名稱
         name = TAIWAN_NAMES_DICT.get(clean_code) or info.get('longName') or info.get('shortName') or f"台股代號 {clean_code}"
         
         if is_etf_flag:
-            # --- ETF 專屬邏輯（宏觀與總經評估） ---
             if clean_code == "00878":
                 fund_size = 6700
                 dividend_yield = 7.8
@@ -90,13 +90,13 @@ def get_analysis(ticker, is_etf_flag):
             
             score = 78.0
             pros = [
-                "【總經與宏觀】全球資金在利率循環與地緣政治波動下,高股息 ETF 具備較強的現金流防禦特性。",
-                f"【基本面與流動性】基金規模達 {fund_size} 億元以上,流動性充裕,具備高度分散單一企業倒閉風險的優勢。",
-                f"【收益表現】近期預估/歷史年化殖利率約落在 {dividend_yield}%,內扣總費率約 {expense_ratio}%,成本在同級中屬合理範圍。"
+                "【總經宏觀】全球資金在利率循環與地緣政治波動下，高股息 ETF 具備較強的現金流防禦特性。",
+                f"【規模流動性】基金規模達 {fund_size} 億元以上，流動性充裕，具備高度分散單一企業倒閉風險的優勢。",
+                f"【收益回報】近期預估/歷史年化殖利率約落在 {dividend_yield}%，內扣總費率約 {expense_ratio}%，成本合理。"
             ]
             cons = [
-                "【總經風險】若全球央行政策轉向或總體經濟面臨衰退,高股息資產仍會受到大盤系統性修正的拖累。",
-                "【機會成本】ETF 屬被動追蹤,無法享用單一個股翻倍成長的超額利潤。"
+                "【總經風險】若全球央行政策轉向或總體經濟面臨衰退，高股息資產仍會受到大盤系統性修正波及。",
+                "【機會成本】ETF 屬被動追蹤，無法享用單一個股飆翻倍的超額爆發力。"
             ]
             
             if score >= 75:
@@ -107,27 +107,15 @@ def get_analysis(ticker, is_etf_flag):
                 badge = "info"
                 
             return {
-                "is_etf": True,
-                "name": name,
-                "current_price": current_price,
-                "latest_date": latest_date,
-                "fetch_timestamp": fetch_timestamp,
-                "source_url": source_url,
-                "metric1_name": "基金規模",
-                "metric1_val": f"{fund_size} 億",
-                "metric2_name": "預估殖利率",
-                "metric2_val": f"{dividend_yield}%",
-                "metric3_name": "內扣總費率",
-                "metric3_val": f"{expense_ratio}%",
-                "score": score,
-                "action": action,
-                "badge": badge,
-                "pros": pros,
-                "cons": cons,
-                "success": True
+                "is_etf": True, "name": name, "current_price": current_price,
+                "latest_date": latest_date, "fetch_timestamp": fetch_timestamp, "source_url": source_url,
+                "metric1_name": "基金規模", "metric1_val": f"{fund_size} 億",
+                "metric2_name": "預估殖利率", "metric2_val": f"{dividend_yield}%",
+                "metric3_name": "內扣總費率", "metric3_val": f"{expense_ratio}%",
+                "score": score, "action": action, "badge": badge,
+                "pros": pros, "cons": cons, "success": True, "hist": hist
             }
         else:
-            # --- 個股專屬邏輯（結合產業供應鏈與技術面） ---
             ma20 = hist['Close'].rolling(window=20).mean().iloc[-1] if len(hist) >= 20 else current_price
             gross_margin = (info.get('grossMargins') or 0.25) * 100
             pe_ratio = info.get('trailingPE') or info.get('forwardPE') or 18.0
@@ -138,21 +126,21 @@ def get_analysis(ticker, is_etf_flag):
             
             if gross_margin > 25:
                 score += 15
-                pros.append(f"【產業競爭力】毛利率達 {gross_margin:.1f}%,顯示公司在供應鏈中具備良好的訂價能力與產品護城河。")
+                pros.append(f"【產業競爭力】毛利率達 {gross_margin:.1f}%，顯示公司在供應鏈中具備良好的訂價能力與護城河。")
             else:
-                cons.append(f"【利潤壓力】毛利率偏低 ({gross_margin:.1f}%),易受全球原物料成本或價格戰侵蝕。")
+                cons.append(f"【利潤壓力】毛利率偏低 ({gross_margin:.1f}%)，易受原物料或市場價格戰侵蝕。")
                 
             if revenue_growth > 5:
                 score += 20
-                pros.append(f"【成長動能】最新營收年增率達 {revenue_growth:.1f}%,呼應終端需求的實質復甦。")
+                pros.append(f"【成長動能】最新營收年增率達 {revenue_growth:.1f}%，呼應終端需求的實質復甦。")
             else:
-                cons.append(f"【成長趨緩】營收年增率較平緩或呈微幅衰退 ({revenue_growth:.1f}%),短線動能需持續觀察。")
+                cons.append(f"【成長趨緩】營收年增率較平緩或呈微幅衰退 ({revenue_growth:.1f}%)，短線動能需持續觀察。")
                 
             if current_price > ma20:
                 score += 10
-                pros.append("【技術面】股價位於月線（20日均線）之上,短線多方佔優。")
+                pros.append("【技術面】股價位於月線（20日均線）之上，短線多方佔優。")
             else:
-                cons.append("【技術面】股價目前處於月線之下,短線籌碼正在整理,上檔逢壓。")
+                cons.append("【技術面】股價目前處於月線之下，短線籌碼正在整理，上檔逢壓。")
                 
             score = max(0.0, min(100.0, score))
             
@@ -167,24 +155,13 @@ def get_analysis(ticker, is_etf_flag):
                 badge = "error"
                 
             return {
-                "is_etf": False,
-                "name": name,
-                "current_price": current_price,
-                "latest_date": latest_date,
-                "fetch_timestamp": fetch_timestamp,
-                "source_url": source_url,
-                "metric1_name": "本益比 (PE)",
-                "metric1_val": f"{pe_ratio:.1f} 倍" if isinstance(pe_ratio, (int, float)) else "N/A",
-                "metric2_name": "毛利率",
-                "metric2_val": f"{gross_margin:.1f}%",
-                "metric3_name": "營收年增率",
-                "metric3_val": f"{revenue_growth:.1f}%",
-                "score": score,
-                "action": action,
-                "badge": badge,
-                "pros": pros,
-                "cons": cons,
-                "success": True
+                "is_etf": False, "name": name, "current_price": current_price,
+                "latest_date": latest_date, "fetch_timestamp": fetch_timestamp, "source_url": source_url,
+                "metric1_name": "本益比 (PE)", "metric1_val": f"{pe_ratio:.1f} 倍" if isinstance(pe_ratio, (int, float)) else "N/A",
+                "metric2_name": "毛利率", "metric2_val": f"{gross_margin:.1f}%",
+                "metric3_name": "營收年增率", "metric3_val": f"{revenue_growth:.1f}%",
+                "score": score, "action": action, "badge": badge,
+                "pros": pros, "cons": cons, "success": True, "hist": hist
             }
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -198,7 +175,7 @@ if st.sidebar.button("開始深度分析"):
     else:
         # 1. 大盤與國際情勢總結
         st.subheader("🌐 國際總體經濟與市場氛圍")
-        st.info("目前全球資本市場深受利率政策、地緣政治及供應鏈庫存調整影響。個股表現分化加劇，建議投資人切勿盲目追高，應回歸企業實質獲利與資產配置規劃。")
+        st.info("目前全球資本市場深受利率政策、地緣政治及供應鏈庫存調整影響。個股表現分化加劇，切勿盲目追高，應回歸企業實質獲利與資產配置規劃。")
         
         target_type_str = "📦 ETF (一籃子分散資產)" if data["is_etf"] else "🏢 個股 (單一企業營運)"
         st.success(f"📌 你正在檢視：**{data['name']} ({ticker_input})** ｜ 類型：**{target_type_str}** ｜ 現價約 **{data['current_price']:.2f} 元**")
@@ -212,7 +189,60 @@ if st.sidebar.button("開始深度分析"):
         col3.metric(data["metric2_name"], data["metric2_val"])
         col4.metric(data["metric3_name"], data["metric3_val"])
         
-        # 3. 專業觀點與多維度解析
+        # 3. 繪製互動式歷史趨勢與 AI 預估線圖
+        st.markdown("---")
+        st.subheader("📈 股價趨勢分析與未來 30 日 AI 預估模型")
+        
+        hist_df = data['hist']
+        fig = go.Figure()
+        
+        # 實際收盤價
+        fig.add_trace(go.Scatter(
+            x=hist_df.index, y=hist_df['Close'],
+            mode='lines', name='歷史收盤價',
+            line=dict(color='#1f77b4', width=2.5)
+        ))
+        
+        # 20日均線 (月線)
+        ma20_series = hist_df['Close'].rolling(window=20).mean()
+        fig.add_trace(go.Scatter(
+            x=hist_df.index, y=ma20_series,
+            mode='lines', name='20日均線 (月線)',
+            line=dict(color='#ff7f0e', width=1.5, dash='dot')
+        ))
+        
+        # 簡單線性回歸預估線 (未來 30 個營業日)
+        if len(hist_df) > 10:
+            x_idx = np.arange(len(hist_df))
+            y_vals = hist_df['Close'].values
+            slope, intercept = np.polyfit(x_idx, y_vals, 1)
+            
+            future_days = 30
+            last_date = hist_df.index[-1]
+            future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=future_days, freq='B')
+            
+            future_x = np.arange(len(hist_df), len(hist_df) + future_days)
+            future_y = slope * future_x + intercept
+            
+            fig.add_trace(go.Scatter(
+                x=future_dates, y=future_y,
+                mode='lines', name='AI 線性趨勢預估線 (30日)',
+                line=dict(color='#2ca02c', width=2, dash='dash')
+            ))
+            
+        fig.update_layout(
+            title=f"{data['name']} ({ticker_input}) 走勢與回歸預估模型",
+            xaxis_title="日期",
+            yaxis_title="價格 (NTD)",
+            template="plotly_white",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            margin=dict(l=20, r=20, t=40, b=20)
+        )
+        st.plotly_fig = fig
+        st.plotly_chart(fig, use_container_width=True)
+        st.caption("💡 **趨勢線說明**：藍線為實際收盤價，橘點線為 20 日月線，綠虛線為基於近期走勢的線性回歸預估延伸線（僅供數學趨勢參考，不代表未來絕對走勢）。")
+
+        # 4. 專業觀點與多維度解析
         st.markdown("---")
         st.subheader("💡 深度專業觀點與多維度解析")
         
@@ -233,32 +263,13 @@ if st.sidebar.button("開始深度分析"):
             for con in data['cons']:
                 st.markdown(f"- {con}")
 
-        # 4. 資金配置建議
+        # 5. 量身打造的三大族群專屬建議（擺脫千篇一律）
         st.markdown("---")
         user_tag = user_profile.split(' ')[0]
-        st.subheader(f"💰 給「{user_tag}」的紀律資金配置建議")
+        st.subheader(f"💰 給「{user_tag}」的獨到資金配置策略")
         
         lot_price = data['current_price'] * 1000
-        if data["is_etf"]:
-            advice_msg = f"這檔 ETF 一張（1,000股）約需 **NT$ {lot_price:,.0f} 元**。由於其具備分散風險與應對總經波動的特性，極適合作為核心資產。建議透過 **定期定額** 或分批低接累積張數。"
-        else:
-            advice_msg = f"這檔個股一張約需 **NT$ {lot_price:,.0f} 元**。單一個股受產業循環與國際利空影響較大，切忌單筆重壓，務必採 **分批建倉**（例如分 3~5 次進場）並嚴格控管資金比重。"
-        st.markdown(f"- **操作紀律**：{advice_msg}")
-
-        # 5. 同類型關聯標的推薦
-        sector_info = PEER_GROUPS.get(ticker_input, {
-            "sector": "市場焦點精選族群", 
-            "peers": [("0050", "元大台灣50"), ("2330", "台積電"), ("2317", "鴻海")]
-        })
         
-        st.markdown("---")
-        st.subheader(f"🔗 同族群與產業鏈關聯標的（{sector_info['sector']}）")
-        
-        p_cols = st.columns(len(sector_info['peers']))
-        for i, (p_code, p_name) in enumerate(sector_info['peers']):
-            with p_cols[i]:
-                st.markdown(f"**🏢 {p_name}** (`{p_code}`)")
-                st.markdown("⭐ 同產業鏈代表性標的，可列入觀察比較。")
-
-        st.markdown("---")
-        st.caption("⚠️ **免責聲明**：本工具提供之數據、總經觀點與分析僅供教學與參考用途，不構成任何形式之買賣推薦或投資建議。投資具備一定風險，請獨立評估並自負盈虧。")
+        if "小資新手族" in user_profile:
+            if data["is_etf"]:
+                strategy_desc = f"資金有限時，最怕遇到市場震盪就信心崩潰。此檔 ETF
