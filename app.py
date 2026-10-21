@@ -5,9 +5,9 @@ import yfinance as yf
 from datetime import datetime
 import plotly.graph_objects as go
 
-st.set_page_config(page_title="智慧選股與 ETF 決策助理（總經與趨勢預估版）", layout="wide")
+st.set_page_config(page_title="智慧選股與 ETF 決策助理（完整旗艦版）", layout="wide")
 
-st.title("🎯 智慧選股與 ETF 決策助理（專業總經與趨勢預估版）")
+st.title("🎯 智慧選股與 ETF 決策助理（旗艦總經與趨勢預估版）")
 st.markdown("結合國際總經、產業護城河、精準族群策略與 **AI 趨勢預估線圖**，為你提供立體的投資決策評估！")
 
 # 側邊欄設定
@@ -76,13 +76,15 @@ def get_analysis(ticker, is_etf_flag):
         clean_code = ticker.replace(".TW", "").replace(".TWO", "")
         source_url = f"https://tw.stock.yahoo.com/quote/{clean_code}"
         
+        # 絕對優先顯示中文名稱
         name = TAIWAN_NAMES_DICT.get(clean_code) or info.get('longName') or info.get('shortName') or f"台股代號 {clean_code}"
         
         if is_etf_flag:
+            # --- ETF 專屬邏輯（2026 最新市場現況） ---
             if clean_code == "00878":
-                fund_size = 6700
-                dividend_yield = 7.8
-                expense_ratio = 0.28
+                fund_size = 6700      # 規模約 6,700 億
+                dividend_yield = 7.8  # 年化殖利率約 7% ~ 9%
+                expense_ratio = 0.28  # 內扣總費率
             else:
                 fund_size = 3500
                 dividend_yield = 6.2
@@ -116,6 +118,7 @@ def get_analysis(ticker, is_etf_flag):
                 "pros": pros, "cons": cons, "success": True, "hist": hist
             }
         else:
+            # --- 個股專屬邏輯 ---
             ma20 = hist['Close'].rolling(window=20).mean().iloc[-1] if len(hist) >= 20 else current_price
             gross_margin = (info.get('grossMargins') or 0.25) * 100
             pe_ratio = info.get('trailingPE') or info.get('forwardPE') or 18.0
@@ -180,6 +183,7 @@ if st.sidebar.button("開始深度分析"):
         target_type_str = "📦 ETF (一籃子分散資產)" if data["is_etf"] else "🏢 個股 (單一企業營運)"
         st.success(f"📌 你正在檢視：**{data['name']} ({ticker_input})** ｜ 類型：**{target_type_str}** ｜ 現價約 **{data['current_price']:.2f} 元**")
         
+        # 顯示最近交易日、系統查詢時間點與來源網址
         st.caption(f"📅 **最近交易日**：`{data['latest_date']}` ｜ ⏱️ **系統查詢時間**：`{data['fetch_timestamp']}` ｜ 🔗 **資料來源**：[Yahoo 股市]({data['source_url']})")
         
         # 2. 核心指標卡片
@@ -191,3 +195,116 @@ if st.sidebar.button("開始深度分析"):
         
         # 3. 繪製互動式歷史趨勢與 AI 預估線圖
         st.markdown("---")
+        st.subheader("📈 股價趨勢分析與未來 30 日 AI 預估模型")
+        
+        hist_df = data['hist']
+        fig = go.Figure()
+        
+        # 實際收盤價
+        fig.add_trace(go.Scatter(
+            x=hist_df.index, y=hist_df['Close'],
+            mode='lines', name='歷史收盤價',
+            line=dict(color='#1f77b4', width=2.5)
+        ))
+        
+        # 20日均線 (月線)
+        ma20_series = hist_df['Close'].rolling(window=20).mean()
+        fig.add_trace(go.Scatter(
+            x=hist_df.index, y=ma20_series,
+            mode='lines', name='20日均線 (月線)',
+            line=dict(color='#ff7f0e', width=1.5, dash='dot')
+        ))
+        
+        # 簡單線性回歸預估線 (未來 30 個營業日)
+        if len(hist_df) > 10:
+            x_idx = np.arange(len(hist_df))
+            y_vals = hist_df['Close'].values
+            slope, intercept = np.polyfit(x_idx, y_vals, 1)
+            
+            future_days = 30
+            last_date = hist_df.index[-1]
+            future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=future_days, freq='B')
+            
+            future_x = np.arange(len(hist_df), len(hist_df) + future_days)
+            future_y = slope * future_x + intercept
+            
+            fig.add_trace(go.Scatter(
+                x=future_dates, y=future_y,
+                mode='lines', name='AI 線性趨勢預估線 (30日)',
+                line=dict(color='#2ca02c', width=2, dash='dash')
+            ))
+            
+        fig.update_layout(
+            title=f"{data['name']} ({ticker_input}) 走勢與回歸預估模型",
+            xaxis_title="日期",
+            yaxis_title="價格 (NTD)",
+            template="plotly_white",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            margin=dict(l=20, r=20, t=40, b=20)
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        st.caption("💡 **趨勢線說明**：藍線為實際收盤價，橘點線為 20 日月線，綠虛線為基於近期走勢的線性回歸預估延伸線（僅供數學趨勢參考，不代表未來絕對走勢）。")
+
+        # 4. 專業觀點與多維度解析
+        st.markdown("---")
+        st.subheader("💡 深度專業觀點與多維度解析")
+        
+        if data['badge'] == 'success':
+            st.success(f"🎯 策略方向：{data['action']}")
+        elif data['badge'] == 'info':
+            st.info(f"⚖️ 策略方向：{data['action']}")
+        else:
+            st.error(f"⚠️ 策略方向：{data['action']}")
+            
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("### ✅ 正向利多與優勢")
+            for pro in data['pros']:
+                st.markdown(f"- {pro}")
+        with c2:
+            st.markdown("### ⚠️ 潛在風險與總經變數")
+            for con in data['cons']:
+                st.markdown(f"- {con}")
+
+        # 5. 量身打造的三大族群專屬建議
+        st.markdown("---")
+        user_tag = user_profile.split(' ')[0]
+        st.subheader(f"💰 給「{user_tag}」的獨到資金配置策略")
+        
+        lot_price = data['current_price'] * 1000
+        
+        if "小資新手族" in user_profile:
+            if data["is_etf"]:
+                strategy_desc = f"資金有限時，最怕遇到市場震盪就信心崩潰。此檔 ETF 每張約 **NT$ {lot_price:,.0f} 元**，對小資族而言門檻較高。強烈建議透過 **零股交易** 或 **定期定額**（每月固定幾千元），將成本平均分攤，藉由時間複利安心累積資產，不必一次買到一張。"
+            else:
+                strategy_desc = f"個股波動劇烈，單價約 **NT$ {lot_price:,.0f} 元**（一張）。小資新手切勿將資金集中於單一個股。若看好其基本面，務必以「零股」小額參與，並嚴格設定停損點，避免因短期回檔而影響生活現金流。"
+        elif "穩健上班族" in user_profile:
+            if data["is_etf"]:
+                strategy_desc = f"身為上班族，核心目標是「用最少的時間成本換取穩健的資產增值」。這檔 ETF 很適合當作資產配置的**現金流核心**。建議採取「薪水撥款後自動扣款」的定期定額策略，搭配市場大跌時的「不定期加碼（金字塔型買法）」方式，穩穩打造被動收入。"
+            else:
+                strategy_desc = f"上班族工作繁忙，不宜短線進出個股。若要配置此檔個股，應將其視為**衛星資產**（總資金佔比不宜超過 15%~20%），並採用 **分 4~5 次、每跌 5% 加碼一次** 的價值分批建倉法，降低心理壓力。"
+        else:
+            if data["is_etf"]:
+                strategy_desc = f"資金部位較大時，首重**流動性與抗通膨效率**。雖然此檔 ETF 流動性極佳，但若一次性大筆敲進容易買在波段高點。建議採用「分三批佈局（例如 30%、30%、40%）」或逢月線支撐再行大舉敲進，並須留意大額配息在稅務上的級距影響。"
+            else:
+                strategy_desc = f"高資產族群配置個股時，應格外重視**風險報酬比與總經週期**。單筆買進一張約 **NT$ {lot_price:,.0f} 元**，資金雖然充裕但仍須嚴守資金效率。建議搭配總體經濟數據與產業景氣循環，利用股價回測年線或月線時分批承接，並做好資產部位的停利停損規劃。"
+
+        st.markdown(f"- **專屬執行方針**：{strategy_desc}")
+
+        # 6. 同類型關聯標的推薦
+        sector_info = PEER_GROUPS.get(ticker_input, {
+            "sector": "市場焦點精選族群", 
+            "peers": [("0050", "元大台灣50"), ("2330", "台積電"), ("2317", "鴻海")]
+        })
+        
+        st.markdown("---")
+        st.subheader(f"🔗 同族群與產業鏈關聯標的（{sector_info['sector']}）")
+        
+        p_cols = st.columns(len(sector_info['peers']))
+        for i, (p_code, p_name) in enumerate(sector_info['peers']):
+            with p_cols[i]:
+                st.markdown(f"**🏢 {p_name}** (`{p_code}`)")
+                st.markdown("⭐ 同產業鏈代表性標的，可列入觀察比較。")
+
+        st.markdown("---")
+        st.caption("⚠️ **免責聲明**：本工具提供之數據、總經觀點與分析僅供教學與參考用途，不構成任何形式之買賣推薦或投資建議。投資具備一定風險，請獨立評估並自負盈虧。")
