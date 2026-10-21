@@ -27,6 +27,29 @@ user_profile = st.sidebar.selectbox(
 # 判斷是否為 ETF (台股代號通常以 00 開頭)
 is_etf = ticker_input.startswith("00")
 
+# 📌 新增：台股中英文對照字典
+TAIWAN_NAMES_DICT = {
+    "0050": "元大台灣50",
+    "0056": "元大高股息",
+    "00878": "國泰永續高股息",
+    "00713": "元大台灣高息低波",
+    "00919": "群益台灣精選高息",
+    "006208": "富邦台50",
+    "00881": "國泰台灣5G+",
+    "2330": "台積電",
+    "2317": "鴻海",
+    "2454": "聯發科",
+    "2308": "台達電",
+    "3711": "日月光投控",
+    "2303": "聯電",
+    "2382": "廣達",
+    "3231": "緯創",
+    "6669": "緯穎",
+    "2881": "富邦金",
+    "2882": "國泰金",
+    "2891": "中信金"
+}
+
 # 模擬同業或同類 ETF 推薦庫
 PEER_GROUPS = {
     "00878": {"sector": "高股息 ETF 族群", "peers": [("0056", "元大高股息"), ("00919", "群益台灣精選高息"), ("00713", "元大台灣高息低波")]},
@@ -43,7 +66,10 @@ def get_analysis(ticker, is_etf_flag):
         info = stock.info
         hist = stock.history(period="3mo")
         current_price = hist['Close'].iloc[-1] if not hist.empty else 100.0
-        name = info.get('shortName', ticker)
+        
+        # 📌 修改處：優先從字典抓取中文名稱，若無則退回原本的 info 英文名稱
+        clean_code = ticker.replace(".TW", "")
+        name = TAIWAN_NAMES_DICT.get(clean_code) or info.get('shortName', ticker)
         
         if is_etf_flag:
             # --- ETF 專屬邏輯（絕不套用個股毛利率/營收） ---
