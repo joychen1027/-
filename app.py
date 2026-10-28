@@ -433,4 +433,26 @@ if st.sidebar.button("🚀 開始深度分析與資金試算", use_container_wid
                 elif "穩健上班族" in user_profile:
                     strategy_desc = "適合當作資產配置的核心部位，採取薪水自動扣款的定期定額策略，搭配大跌時金字塔加碼法。"
                 else:
-                    strategy_desc = f"單筆約 **NT$ {lot_price:,.0f} 元**。首重流動性與
+                    strategy_desc = f"單筆約 **NT$ {lot_price:,.0f} 元**。首重流動性與抗通膨效率，建議採分三批佈局或逢月線支撐再行承接。"
+
+                st.markdown(f"👉 **專屬執行方針**：{strategy_desc}")
+
+            # 🔗 同業與產業鏈標的
+            sector_info = PEER_GROUPS.get(data['clean_code'], {
+                "sector": "一般上市櫃企業與市場焦點族群", 
+                "peers": [
+                    ("2330", "台積電", "台股權王與半導體中流砥柱。"),
+                    ("2317", "鴻海", "大型權值龍頭，觀察台灣電子出口氣氛。"),
+                    ("0050", "元大台灣50", "追蹤大盤市值表現，作為台股脈動基準。")
+                ]
+            })
+            
+            with st.container(border=True):
+                st.markdown(f"### 🔗 同族群與產業鏈關聯標的（{sector_info['sector']}）")
+                for p_code, p_name, p_reason in sector_info['peers']:
+                    st.markdown(f"- **🏢 {p_name} (`{p_code}`)**：{p_reason}")
+
+            # 系統資訊
+            with st.expander("ℹ️ 系統查詢資訊與免責聲明"):
+                st.caption(f"⏱️ 系統查詢時間：`{data['fetch_timestamp']}` ｜ 資料來源：Yahoo Finance & 台灣證券交易所")
+                st.caption("⚠️ 本工具提供之數據與觀點僅供教學與參考用途，不構成任何買賣推薦或投資建議。")
