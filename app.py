@@ -22,11 +22,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("🎯 台股智慧選股與 ETF 決策助理")
-st.caption("支援全台股智慧搜尋：可輸入俗稱（如 GG、航海王）、中文名稱或 4 位數代號（如 2002、6505），自動聯動線上資料庫！")
+st.caption("全台股深度智慧搜尋：支援冷門股、飆股、俗稱或 4 位數代號，自動聯動線上資料庫精準對應！")
 
 # 側邊欄設定
 st.sidebar.header("⚙️ 查閱設定")
-raw_input = st.sidebar.text_input("輸入股票名稱、俗稱或代號", value="2002", help="例如：中鋼、2002、台積電、長榮、或任何冷門飆股代號").strip()
+raw_input = st.sidebar.text_input("輸入股票名稱、俗稱或代號", value="2330", help="例如：中鋼、2002、台積電、或是任何冷門飆股代號").strip()
 
 user_profile = st.sidebar.selectbox(
     "選擇你的資金族群", 
@@ -37,9 +37,8 @@ user_profile = st.sidebar.selectbox(
     ]
 )
 
-# 💡 終極智慧解析函式：結合常用俗稱 + Yahoo Finance 線上即時中文搜尋
+# 💡 終極深度智慧解析函式（強化搜尋深度與中文名稱過濾）
 def resolve_ticker(user_query):
-    # 常用口語俗稱快速對照（補充常見簡稱）
     common_aliases = {
         "GG": "2330", "護國神山": "2330",
         "郭董": "2317",
@@ -59,32 +58,39 @@ def resolve_ticker(user_query):
         code = common_aliases[upper_query]
         return f"{code}.TW", code, upper_query
 
-    # 2. 核心升級：優先透過 yfinance 搜尋引擎聯動（完美支援中文名稱、冷門股、飆股與代號，並自動帶回中文簡稱）
-    try:
-        search_results = yf.Search(cleaned_query, max_results=5).quotes
-        for item in search_results:
-            symbol = item.get('symbol', '')
-            # 過濾出台股上市櫃標的 (.TW 或 .TWO)
-            if symbol.endswith('.TW') or symbol.endswith('.TWO'):
-                clean_code = symbol.replace('.TW', '').replace('.TWO', '')
-                shortname = item.get('shortname') or item.get('longname') or cleaned_query
-                return symbol, clean_code, shortname
-    except Exception:
-        pass
-
-    # 3. 備用方案：若搜尋未命中，直接嘗試組合 4 位數代號 (.TW / .TWO)
+    # 2. 如果使用者直接輸入 4-5 位數代號
     if re.match(r'^\d{4,5}$', cleaned_query):
         for suffix in ['.TW', '.TWO']:
             ticker_candidate = f"{cleaned_query}{suffix}"
             try:
                 test_df = yf.Ticker(ticker_candidate).history(period="2d")
                 if not test_df.empty:
-                    # 嘗試從 info 抓取中文或名稱
                     info = yf.Ticker(ticker_candidate).info
-                    co_name = info.get('longName') or info.get('shortName') or f"台股企業 ({cleaned_query})"
-                    return ticker_candidate, cleaned_query, co_name
+                    # 嘗試抓取中文名稱
+                    c_name = info.get('chineseName') or info.get('longName') or info.get('shortName') or f"台股企業 ({cleaned_query})"
+                    # 如果抓到的是長英文，轉為代號顯示
+                    if re.search(r'[a-zA-Z]{6,}', c_name) and not any('\u4e00' <= c <= '\u9fff' for c in c_name):
+                        c_name = f"台股企業 ({cleaned_query})"
+                    return ticker_candidate, cleaned_query, c_name
             except Exception:
                 continue
+
+    # 3. 深度線上模糊搜尋（擴大抓取前 10 筆，確保冷門股不漏接）
+    try:
+        search_results = yf.Search(cleaned_query, max_results=10).quotes
+        for item in search_results:
+            symbol = item.get('symbol', '')
+            if symbol.endswith('.TW') or symbol.endswith('.TWO'):
+                clean_code = symbol.replace('.TW', '').replace('.TWO', '')
+                shortname = item.get('shortname') or item.get('longname') or cleaned_query
+                
+                # 過濾純英文亂碼或過長英文名稱
+                if re.search(r'[a-zA-Z]{8,}', shortname) and not any('\u4e00' <= c <= '\u9fff' for c in shortname):
+                    shortname = f"台股企業 ({clean_code})"
+                    
+                return symbol, clean_code, shortname
+    except Exception:
+        pass
 
     return None, None, cleaned_query
 
@@ -93,7 +99,7 @@ is_etf = clean_code.startswith("00") if clean_code else False
 
 # 側邊欄新手引導
 with st.sidebar.expander("💡 第一次使用？新手 3 步驟指南"):
-    st.markdown("1. **自由輸入**：不限全名，打「中鋼」、「2002」或任何飆股代號皆可即時搜尋。")
+    st.markdown("1. **自由輸入**：不限全名，打「中鋼」、「2002」或任何冷門飆股代號皆可即時搜尋。")
     st.markdown("2. **選擇族群**：選擇最符合你現況的資金規模，系統會給予專屬建議。")
     st.markdown("3. **點擊分析**：按下下方按鈕，直接看最上方的「風險總結」與評分！")
 
@@ -140,9 +146,12 @@ def get_analysis(ticker, is_etf_flag, query_name, cached_name):
         latest_date = hist.index[-1].strftime('%Y-%m-%d')
         fetch_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
-        # 優先採用搜尋帶回來的中文名稱，若無則從 info 補抓
+        # 確保名稱乾淨且不出現醜陋的長英文
         raw_name = cached_name or info.get('longName') or info.get('shortName') or query_name
-        name = raw_name if not re.search(r'[a-zA-Z]{6,}', raw_name) else f"台股企業 ({clean_c})"
+        if re.search(r'[a-zA-Z]{6,}', raw_name) and not any('\u4e00' <= c <= '\u9fff' for c in raw_name):
+            name = f"台股企業 ({clean_c})"
+        else:
+            name = raw_name
         
         if is_etf_flag:
             fund_size = 6700 if clean_c == "00878" else 3500
