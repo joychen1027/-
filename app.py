@@ -125,3 +125,16 @@ def get_analysis(ticker, is_etf_flag, query_name):
             fund_size = 6700 if clean_code == "00878" else 3500
             dividend_yield = 7.8 if clean_code == "00878" else 6.2
             expense_ratio = 0.28 if clean_code == "00878" else 0.30
+                
+            score = 78.0
+            pros = [
+                "【資產抗震】高股息 ETF 在市場震盪時，具備較強的現金流防禦特性。",
+                f"【規模與流動性】基金規模達 {fund_size} 億元以上，買賣容易，能分散單一公司倒閉的風險。",
+                f"【預估收益】預估年化殖利率約 {dividend_yield}%，內扣費用率約 {expense_ratio}%（成本合理）。"
+            ]
+            cons = [
+                "【大盤連動風險】若整體市場大跌，高股息資產仍會受到牽連而回檔。",
+                "【成長爆發力有限】ETF 屬被動追蹤，無法享用單一個股飆翻倍的超額利潤。"
+            ]
+            
+            action = "分批逢低承接
