@@ -245,4 +245,37 @@ if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
             fig.add_trace(go.Scatter(
                 x=hist_df.index, y=hist_df['Close'],
                 mode='lines', name='歷史收盤價',
-                line=dict(color='#0052CC', width=2.
+                line=dict(color='#0052CC', width=2.5)
+            ))
+            
+            ma20_series = hist_df['Close'].rolling(window=20).mean()
+            fig.add_trace(go.Scatter(
+                x=hist_df.index, y=ma20_series,
+                mode='lines', name='20日均線 (月線)',
+                line=dict(color='#FF8B00', width=1.5, dash='dot')
+            ))
+            
+            if len(hist_df) > 10:
+                x_idx = np.arange(len(hist_df))
+                y_vals = hist_df['Close'].values
+                slope, intercept = np.polyfit(x_idx, y_vals, 1)
+                
+                future_days = 30
+                last_date = hist_df.index[-1]
+                future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=future_days, freq='B')
+                future_x = np.arange(len(hist_df), len(hist_df) + future_days)
+                future_y = slope * future_x + intercept
+                
+                fig.add_trace(go.Scatter(
+                    x=future_dates, y=future_y,
+                    mode='lines', name='AI 線性趨勢預估線 (30日)',
+                    line=dict(color='#36B37E', width=2, dash='dash')
+                ))
+                
+            fig.update_layout(
+                xaxis_title="日期", 
+                yaxis_title="價格 (NTD)",
+                template="plotly_white", 
+                height=380,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                margin=dict(
