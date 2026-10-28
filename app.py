@@ -123,4 +123,5 @@ def get_analysis(ticker, is_etf_flag, query_name):
         
         if is_etf_flag:
             fund_size = 6700 if clean_code == "00878" else 3500
-            dividend_yield = 7.8 if clean_code
+            dividend_yield = 7.8 if clean_code == "00878" else 6.2
+            expense_
