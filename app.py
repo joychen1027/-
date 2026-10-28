@@ -278,4 +278,38 @@ if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
                 template="plotly_white", 
                 height=380,
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                margin=dict(
+                margin=dict(l=10, r=10, t=10, b=10)
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            with st.expander("🔍 點此查看：數字、評分與預估線的依據與限制是什麼？"):
+                st.markdown("""
+                - **綜合評分怎麼算？**：結合「毛利率（賺錢能力）」、「營收年增率（成長動能）」與「月線位置（短線多空）」給予 0~100 分的綜合健康度。
+                - **AI 預估線的依據與限制**：綠色虛線是根據過去 6 個月的股價走勢斜率做出的**純數學線性延伸**。**請注意：這僅代表過去趨勢的數學投影，完全無法預測突發利多、利空或黑天鵝事件，請勿將其作為唯一買賣依據！**
+                """)
+
+        # 外部查證專區
+        with st.container(border=True):
+            st.markdown("### 🔍 獨立查證與交叉比對專區")
+            st.caption("建議點擊下方權威平台，對照真實的即時報價、技術線圖與財報細節：")
+            c_link1, c_link2, c_link3 = st.columns(3)
+            code = data["clean_code"]
+            with c_link1:
+                st.link_button("📈 Yahoo 股市主頁", f"https://tw.stock.yahoo.com/quote/{code}", use_container_width=True)
+            with c_link2:
+                st.link_button("📊 Goodinfo! 股市資訊網", f"https://goodinfo.tw/StockInfo/StockDetail.asp?STOCK_ID={code}", use_container_width=True)
+            with c_link3:
+                st.link_button("📉 TradingView 專業圖表", f"https://www.tradingview.com/symbols/TWSE-{code}/", use_container_width=True)
+
+        # 優勢與風險細節
+        with st.container(border=True):
+            st.markdown("### 💡 詳細優勢與潛在風險解析")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("##### ✅ **正向利多**")
+                for pro in data['pros']:
+                    st.markdown(f"- {pro}")
+            with c2:
+                st.markdown("##### ⚠️ **潛在風險**")
+                for con in data['cons']:
+                    st.markdown(
