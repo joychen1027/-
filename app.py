@@ -122,11 +122,22 @@ def resolve_ticker(user_query):
 resolved_ticker, clean_code, resolved_name = resolve_ticker(raw_input)
 is_etf = clean_code.startswith("00") if clean_code else False
 
-# 側邊欄新手引導
+# 側邊欄新手引導與高中生白話辭典
 with st.sidebar.expander("💡 第一次使用？新手 3 步驟指南"):
     st.markdown("1. **輸入代號/名稱**：打「中鋼」、「2002」或「台積電」皆可搜尋。")
-    st.markdown("2. **設定金額與天數**：在側邊欄輸入預計投資金額，並自由選擇 1 個月、1 年等預估時間。")
+    st.markdown("2. **設定金額與天數**：在側邊欄輸入預計投資金額，並自由選擇預估時間。")
     st.markdown("3. **查看預估變化**：系統會動態推算指定天數後的資產總值與損益。")
+
+# 📚 新增：側邊欄常駐的高中生白話辭典
+with st.sidebar.expander("📖 高中生也能懂的「投資專有名詞白話辭典」"):
+    st.markdown("""
+    - **毛利率**：扣掉原料成本後真正賺到的利潤比。越高代表產品技術越硬。
+    - **本益比 (PE)**：靠公司賺錢速度幾年能回本？數字太高可能股價偏貴。
+    - **營收年增率 (YoY)**：跟去年同期比賺得有沒有更多？
+    - **20日均線 (月線)**：過去一個月大家的平均買進成本，短線多空分水嶺。
+    - **空頭排列**：股價一路下跌跌破均線，主力大戶在拋售，千萬不要盲目接刀。
+    - **高股息 ETF**：一次買下一籃子會定期發零用錢的好公司。
+    """)
 
 PEER_GROUPS = {
     "00878": {
@@ -425,7 +436,7 @@ if st.sidebar.button("🚀 開始深度分析與資金試算", use_container_wid
 
                 st.markdown(f"👉 **專屬執行方針**：{strategy_desc}")
 
-            # 🔗 同業與產業鏈標的 (安全條列式排版)
+            # 🔗 同業與產業鏈標的
             sector_info = PEER_GROUPS.get(data['clean_code'], {
                 "sector": "一般上市櫃企業與市場焦點族群", 
                 "peers": [
