@@ -372,4 +372,87 @@ if st.sidebar.button("🚀 開始深度分析與資金試算", use_container_wid
                     
                     trade_days_ahead = int(future_days * (250 / 365))
                     last_date = hist_df.index[-1]
-                    future_dates = pd.date_range(start=last_date + pd.Timed
+                    future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=max(1, trade_days_ahead), freq='B')
+                    future_x = np.arange(len(hist_df), len(hist_df) + len(future_dates))
+                    future_y = slope * future_x + intercept
+                    
+                    fig.add_trace(go.Scatter(
+                        x=future_dates, y=future_y,
+                        mode='lines', name=f'歷史趨勢延伸預估 ({time_horizon_label})',
+                        line=dict(color='#36B37E', width=2, dash='dash')
+                    ))
+                    
+                fig.update_layout(
+                    xaxis_title="日期", 
+                    yaxis_title="價格 (NTD)",
+                    template="plotly_white", 
+                    height=380,
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    margin=dict(l=10, r=10, t=10, b=10)
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+                with st.expander("🔍 點此查看：數字、評分與預估線的依據與限制是什麼？"):
+                    st.markdown("- **綜合評分怎麼算？**：結合毛利率、營收年增率與月線位置給予 0~100 分的量化參考指標。")
+                    st.markdown("- **趨勢預估線的依據與限制**：綠色虛線為歷史數據之線性延伸，無法預測突發的經濟或政治事件。")
+
+            # 外部查證專區
+            with st.container(border=True):
+                st.markdown("### 🔍 獨立查證與交叉比對專區")
+                st.caption("建議點擊下方權威平台，對照真實的即時報價、技術線圖與財報細節：")
+                c_link1, c_link2, c_link3 = st.columns(3)
+                code = data["clean_code"]
+                with c_link1:
+                    st.link_button("📈 Yahoo 股市主頁", f"https://tw.stock.yahoo.com/quote/{code}", use_container_width=True)
+                with c_link2:
+                    st.link_button("📊 Goodinfo! 股市資訊網", f"https://goodinfo.tw/StockInfo/StockDetail.asp?STOCK_ID={code}", use_container_width=True)
+                with c_link3:
+                    st.link_button("📉 TradingView 專業圖表", f"https://www.tradingview.com/symbols/TWSE-{code}/", use_container_width=True)
+
+            # 優勢與風險細節
+            with st.container(border=True):
+                st.markdown("### 💡 詳細優勢與潛在風險解析")
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.markdown("##### ✅ **正向參考因素**")
+                    for pro in data['pros']:
+                        st.markdown(f"- {pro}")
+                with c2:
+                    st.markdown("##### ⚠️ **潛在風險考量**")
+                    for con in data['cons']:
+                        st.markdown(f"- {con}")
+
+            # 資金族群策略
+            with st.container(border=True):
+                user_tag = user_profile.split(' ')[0]
+                st.markdown(f"### 💰 給「{user_tag}」的配置參考方針")
+                lot_price = data['current_price'] * 1000
+                
+                if "小資新手族" in user_profile:
+                    strategy_desc = f"整張市值約 **NT$ {lot_price:,.0f} 元**。建議透過 **零股交易** 或 **定期定額** 方式分批佈局，降低單一時間點的波動風險。"
+                elif "穩健上班族" in user_profile:
+                    strategy_desc = "適合納入資產配置的核心部位，採取紀律化的定期定額策略，並在資產拉回時適度調整。"
+                else:
+                    strategy_desc = f"整張市值約 **NT$ {lot_price:,.0f} 元**。首重資金流動性與配置效率，建議分批進場或於月線支撐區間評估。"
+
+                st.markdown(f"👉 **建議執行方針**：{strategy_desc}")
+
+            # 🔗 同業與產業鏈標的
+            sector_info = PEER_GROUPS.get(data['clean_code'], {
+                "sector": "一般上市櫃企業與市場焦點族群", 
+                "peers": [
+                    ("2330", "台積電", "台股權王與半導體中流砥柱。"),
+                    ("2317", "鴻海", "大型權值龍頭，觀察台灣電子出口氣氛。"),
+                    ("0050", "元大台灣50", "追蹤大盤市值表現，作為台股脈動基準。")
+                ]
+            })
+            
+            with st.container(border=True):
+                st.markdown(f"### 🔗 同族群與產業鏈關聯標的（{sector_info['sector']}）")
+                for p_code, p_name, p_reason in sector_info['peers']:
+                    st.markdown(f"- **🏢 {p_name} (`{p_code}`)**：{p_reason}")
+
+            # 系統資訊
+            with st.expander("ℹ️ 系統查詢資訊與免責聲明"):
+                st.caption(f"⏱️ 系統查詢時間：`{data['fetch_timestamp']}` ｜ 資料來源：Yahoo Finance & 台灣證券交易所")
+                st.caption("⚠️ 本工具提供之數據與觀點僅供教學與參考用途，不構成任何買賣推薦或投資建議。")
