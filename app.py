@@ -22,11 +22,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("🎯 台股智慧選股與 ETF 決策助理")
-st.caption("輸入股票俗稱、中文名稱或 4 位數代號，系統會自動智慧辨識並整理價格與風險！")
+st.caption("支援全台股智慧搜尋：可輸入俗稱（如 GG、航海王）、中文名稱或 4 位數代號（如 2002、6505），自動聯動線上資料庫！")
 
 # 側邊欄設定
 st.sidebar.header("⚙️ 查閱設定")
-raw_input = st.sidebar.text_input("輸入股票名稱、俗稱或代號", value="中鋼", help="例如：中鋼、2002、台積電、00878 等").strip()
+raw_input = st.sidebar.text_input("輸入股票名稱、俗稱或代號", value="2002", help="例如：中鋼、2002、台積電、長榮、或任何冷門飆股代號").strip()
 
 user_profile = st.sidebar.selectbox(
     "選擇你的資金族群", 
@@ -37,28 +37,21 @@ user_profile = st.sidebar.selectbox(
     ]
 )
 
-# 💡 智慧解析函式：精準對應俗稱、動態測試代號
+# 💡 終極智慧解析函式：結合常用俗稱 + Yahoo Finance 線上即時中文搜尋
 def resolve_ticker(user_query):
+    # 常用口語俗稱快速對照（補充常見簡稱）
     common_aliases = {
-        "台積電": "2330", "GG": "2330", "護國神山": "2330",
-        "鴻海": "2317", "郭董": "2317",
-        "聯發科": "2454", "發哥": "2454",
-        "長榮": "2603", "航海王": "2603",
-        "中鋼": "2002", "鋼鐵人": "2002",
-        "台塑": "1301", "南亞": "1303", "台化": "1326", "台塑化": "6505",
-        "中華電": "2412", "台達電": "2308",
-        "富邦金": "2881", "國泰金": "2882", "中信金": "2891", "玉山金": "2884",
-        "0050": "0050", "元大台灣50": "0050",
-        "0056": "0056", "元大高股息": "0056",
-        "00878": "00878", "國泰永續高股息": "00878", "永續高股息": "00878",
-        "00713": "00713", "元大台灣高息低波": "00713",
-        "00919": "00919", "群益高息": "00919",
-        "00929": "00929", "復華台灣科技優息": "00929"
+        "GG": "2330", "護國神山": "2330",
+        "郭董": "2317",
+        "發哥": "2454",
+        "航海王": "2603",
+        "鋼鐵人": "2002"
     }
     
     cleaned_query = user_query.strip()
     upper_query = cleaned_query.upper()
     
+    # 1. 檢查口語俗稱
     if cleaned_query in common_aliases:
         code = common_aliases[cleaned_query]
         return f"{code}.TW", code, cleaned_query
@@ -66,27 +59,33 @@ def resolve_ticker(user_query):
         code = common_aliases[upper_query]
         return f"{code}.TW", code, upper_query
 
+    # 2. 核心升級：優先透過 yfinance 搜尋引擎聯動（完美支援中文名稱、冷門股、飆股與代號，並自動帶回中文簡稱）
+    try:
+        search_results = yf.Search(cleaned_query, max_results=5).quotes
+        for item in search_results:
+            symbol = item.get('symbol', '')
+            # 過濾出台股上市櫃標的 (.TW 或 .TWO)
+            if symbol.endswith('.TW') or symbol.endswith('.TWO'):
+                clean_code = symbol.replace('.TW', '').replace('.TWO', '')
+                shortname = item.get('shortname') or item.get('longname') or cleaned_query
+                return symbol, clean_code, shortname
+    except Exception:
+        pass
+
+    # 3. 備用方案：若搜尋未命中，直接嘗試組合 4 位數代號 (.TW / .TWO)
     if re.match(r'^\d{4,5}$', cleaned_query):
         for suffix in ['.TW', '.TWO']:
             ticker_candidate = f"{cleaned_query}{suffix}"
             try:
                 test_df = yf.Ticker(ticker_candidate).history(period="2d")
                 if not test_df.empty:
-                    return ticker_candidate, cleaned_query, f"台股企業 ({cleaned_query})"
+                    # 嘗試從 info 抓取中文或名稱
+                    info = yf.Ticker(ticker_candidate).info
+                    co_name = info.get('longName') or info.get('shortName') or f"台股企業 ({cleaned_query})"
+                    return ticker_candidate, cleaned_query, co_name
             except Exception:
                 continue
-        return f"{cleaned_query}.TW", cleaned_query, cleaned_query
 
-    try:
-        search_results = yf.Search(cleaned_query, max_results=5).quotes
-        for item in search_results:
-            symbol = item.get('symbol', '')
-            if symbol.endswith('.TW') or symbol.endswith('.TWO'):
-                clean_code = symbol.replace('.TW', '').replace('.TWO', '')
-                return symbol, clean_code, item.get('shortname', cleaned_query)
-    except Exception:
-        pass
-        
     return None, None, cleaned_query
 
 resolved_ticker, clean_code, resolved_name = resolve_ticker(raw_input)
@@ -94,11 +93,11 @@ is_etf = clean_code.startswith("00") if clean_code else False
 
 # 側邊欄新手引導
 with st.sidebar.expander("💡 第一次使用？新手 3 步驟指南"):
-    st.markdown("1. **隨意輸入**：直接輸入「中鋼」、「護國神山」或「2002」皆可自動辨識。")
+    st.markdown("1. **自由輸入**：不限全名，打「中鋼」、「2002」或任何飆股代號皆可即時搜尋。")
     st.markdown("2. **選擇族群**：選擇最符合你現況的資金規模，系統會給予專屬建議。")
     st.markdown("3. **點擊分析**：按下下方按鈕，直接看最上方的「風險總結」與評分！")
 
-# 🔗 擴充同業與產業鏈標的字典（涵蓋高股息、半導體、傳統重工業、塑膠原物料等）
+# 同業與產業鏈資料庫
 PEER_GROUPS = {
     "00878": {
         "sector": "高股息 ETF 族群", 
@@ -127,7 +126,7 @@ PEER_GROUPS = {
 }
 
 @st.cache_data
-def get_analysis(ticker, is_etf_flag, query_name):
+def get_analysis(ticker, is_etf_flag, query_name, cached_name):
     try:
         clean_c = ticker.replace(".TW", "").replace(".TWO", "")
         stock = yf.Ticker(ticker)
@@ -135,14 +134,15 @@ def get_analysis(ticker, is_etf_flag, query_name):
         hist = stock.history(period="6mo")
         
         if hist.empty:
-            return {"success": False, "error": f"找不到與「{query_name}」對應的台股歷史資料，請確認代號是否正確。"}
+            return {"success": False, "error": f"找不到與「{query_name}」對應的台股歷史資料，請確認代號或名稱是否正確。"}
             
         current_price = float(hist['Close'].iloc[-1])
         latest_date = hist.index[-1].strftime('%Y-%m-%d')
         fetch_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
-        raw_name = info.get('longName') or info.get('shortName') or query_name
-        name = raw_name if not re.search(r'[a-zA-Z]{5,}', raw_name) else f"台股企業 ({clean_c})"
+        # 優先採用搜尋帶回來的中文名稱，若無則從 info 補抓
+        raw_name = cached_name or info.get('longName') or info.get('shortName') or query_name
+        name = raw_name if not re.search(r'[a-zA-Z]{6,}', raw_name) else f"台股企業 ({clean_c})"
         
         if is_etf_flag:
             fund_size = 6700 if clean_c == "00878" else 3500
@@ -218,18 +218,17 @@ def get_analysis(ticker, is_etf_flag, query_name):
 # 執行分析按鈕
 if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
     if not resolved_ticker:
-        st.error(f"❌ 找不到與「{raw_input}」對應的股票，請嘗試輸入正確的 4 位數台股代號（例如：2002）或全名。")
+        st.error(f"❌ 找不到與「{raw_input}」對應的台股標的，請嘗試輸入正確的 4 位數代號（例如：2002）或完整名稱。")
     else:
-        with st.spinner(f'正在為您智慧搜尋與分析「{raw_input}」...'):
-            data = get_analysis(resolved_ticker, is_etf, raw_input)
+        with st.spinner(f'正在向 Yahoo 股市資料庫聯動搜尋與分析「{raw_input}」...'):
+            data = get_analysis(resolved_ticker, is_etf, raw_input, resolved_name)
             
         if not data.get("success", False):
             st.error(f"❌ 分析失敗：{data.get('error', '未知錯誤')}")
         else:
             target_type_str = "📦 ETF (一籃子分散資產)" if data["is_etf"] else "🏢 個股 (單一企業營運)"
             
-            if raw_input.upper() != data['clean_code']:
-                st.info(f"💡 **系統自動辨識**：您輸入的「{raw_input}」已自動對應至 **{data['name']} ({data['clean_code']})**")
+            st.info(f"💡 **系統智慧對應成功**：您輸入的「{raw_input}」已自動鎖定 👉 **{data['name']} ({data['clean_code']})**")
 
             # 1. 摘要與風險快篩放最上方
             with st.container(border=True):
@@ -357,13 +356,13 @@ if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
 
                 st.markdown(f"👉 **專屬執行方針**：{strategy_desc}")
 
-            # 🔗 同業與產業鏈標的 (根據當前股票代號動態對應)
+            # 🔗 同業與產業鏈標的
             sector_info = PEER_GROUPS.get(data['clean_code'], {
-                "sector": "傳統產業與一般上市櫃企業", 
+                "sector": "一般上市櫃企業與市場焦點族群", 
                 "peers": [
-                    ("1301", "台塑", "台灣傳統產業與塑膠龍頭代表。"),
-                    ("2002", "中鋼", "國內鋼鐵與重工業龍頭基石。"),
-                    ("2603", "長榮", "航運與全球貨櫃運輸代表。")
+                    ("2330", "台積電", "台股權王與半導體中流砥柱。"),
+                    ("2317", "鴻海", "大型權值龍頭，觀察台灣電子出口氣氛。"),
+                    ("0050", "元大台灣50", "追蹤大盤市值表現，作為台股脈動基準。")
                 ]
             })
             
