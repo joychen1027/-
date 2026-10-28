@@ -13,7 +13,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# 隱藏預設選單與頁尾
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -22,41 +21,12 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 主標題區塊
 st.title("🎯 台股智慧選股與 ETF 決策助理")
-st.caption("輸入股票或 ETF 名稱，幫你整理價格變化、投資特色與主要風險，學習看懂投資資訊。")
-
-# 雙向對照字典（支援中文名稱直接反查代號）
-STOCK_MAPPING = {
-    # ETF
-    "0050": "元大台灣50", "元大台灣50": "0050",
-    "0056": "元大高股息", "元大高股息": "0056",
-    "00878": "國泰永續高股息", "國泰永續高股息": "00878",
-    "00713": "元大台灣高息低波", "元大台灣高息低波": "00713",
-    "00919": "群益台灣精選高息", "群益台灣精選高息": "00919",
-    "006208": "富邦台50", "富邦台50": "006208",
-    # 個股
-    "2330": "台積電", "台積電": "2330",
-    "2317": "鴻海", "鴻海": "2317",
-    "2454": "聯發科", "聯發科": "2454",
-    "2308": "台達電", "台達電": "2308",
-    "3711": "日月光投控", "日月光投控": "3711",
-    "2303": "聯電", "聯電": "2303",
-    "2382": "廣達", "廣達": "2382",
-    "3231": "緯創", "緯創": "3231",
-    "6669": "緯穎", "緯穎": "6669",
-    "2881": "富邦金", "富邦金": "2881",
-    "2882": "國泰金", "國泰金": "2882",
-    "2891": "中信金", "中信金": "2891",
-    "2603": "長榮", "長榮": "2603"
-}
+st.caption("輸入股票俗稱、中文名稱或代號，系統會自動智慧辨識並整理價格與風險！")
 
 # 側邊欄設定
 st.sidebar.header("⚙️ 查閱設定")
-raw_input = st.sidebar.text_input("輸入台股名稱或代號", value="台積電", help="例如：可輸入「台積電」或「2330」｜ ETF可輸入「國泰永續高股息」或「00878」").strip()
-
-clean_input = STOCK_MAPPING.get(raw_input, raw_input).upper()
-taiwan_ticker = f"{clean_input}.TW"
+raw_input = st.sidebar.text_input("輸入股票名稱、俗稱或代號", value="台積電", help="支援俗稱、簡稱或代號，例如：台積電、2330、00878 等").strip()
 
 user_profile = st.sidebar.selectbox(
     "選擇你的資金族群", 
@@ -67,11 +37,51 @@ user_profile = st.sidebar.selectbox(
     ]
 )
 
-is_etf = clean_input.startswith("00")
+# 💡 智慧解析函式：結合常用俗稱字典 + Yahoo 線上動態搜尋
+def resolve_ticker(user_query):
+    # 1. 常見俗稱與核心對照字典（支援簡稱、全名、代號）
+    common_aliases = {
+        "台積電": "2330", "GG": "2330", "護國神山": "2330",
+        "鴻海": "2317", "郭董": "2317",
+        "聯發科": "2454", "發哥": "2454",
+        "長榮": "2603", "航海王": "2603",
+        "00878": "00878", "國泰高股息": "00878", "永續高股息": "00878",
+        "0050": "0050", "元大台灣50": "0050",
+        "0056": "0056", "元大高股息": "0056",
+        "00919": "00919", "群益高息": "00919"
+    }
+    
+    # 檢查是否直接命中字典或代號
+    upper_query = user_query.upper()
+    if upper_query in common_aliases:
+        code = common_aliases[upper_query]
+        return f"{code}.TW", code, user_query
+    
+    # 如果使用者直接輸入數字代號 (如 2330, 00878)
+    if re.match(r'^\d{4,5}$', upper_query):
+        return f"{upper_query}.TW", upper_query, user_query
+
+    # 2. 如果字典找不到，利用 yfinance 的線上搜尋引擎抓取最可能的台股代號
+    try:
+        search_results = yf.Search(user_query, max_results=3).quotes
+        for item in search_results:
+            symbol = item.get('symbol', '')
+            # 過濾出台股上市櫃標的 (.TW 或 .TWO)
+            if symbol.endswith('.TW') or symbol.endswith('.TWO'):
+                clean_code = symbol.replace('.TW', '').replace('.TWO', '')
+                return symbol, clean_code, item.get('shortname', user_query)
+    except Exception:
+        pass
+        
+    # 如果真的都找不到，預設回傳台積電避免報錯
+    return "2330.TW", "2330", "台積電"
+
+resolved_ticker, clean_code, resolved_name = resolve_ticker(raw_input)
+is_etf = clean_code.startswith("00")
 
 # 側邊欄新手引導
 with st.sidebar.expander("💡 第一次使用？新手 3 步驟指南"):
-    st.markdown("1. **輸入名稱或代號**：直接打「台積電」或「2330」皆可查詢。")
+    st.markdown("1. **隨意輸入**：直接輸入「護國神山」、「發哥」或「00878」皆可自動辨識。")
     st.markdown("2. **選擇族群**：選擇最符合你現況的資金規模，系統會給予專屬建議。")
     st.markdown("3. **點擊分析**：按下下方按鈕，直接看最上方的「風險總結」與評分！")
 
@@ -97,31 +107,25 @@ PEER_GROUPS = {
 @st.cache_data
 def get_analysis(ticker, is_etf_flag, query_name):
     try:
-        clean_code = ticker.replace(".TW", "").replace(".TWO", "")
+        clean_c = ticker.replace(".TW", "").replace(".TWO", "")
         stock = yf.Ticker(ticker)
         info = stock.info
         hist = stock.history(period="6mo")
         
         if hist.empty:
-            return {"success": False, "error": f"找不到代號或名稱「{query_name}」的歷史價格資料，請確認輸入是否正確。"}
+            return {"success": False, "error": f"找不到與「{query_name}」對應的台股歷史資料，請嘗試輸入更明確的名稱或代號。"}
             
         current_price = float(hist['Close'].iloc[-1])
         latest_date = hist.index[-1].strftime('%Y-%m-%d')
         fetch_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
-        raw_name = info.get('longName') or info.get('shortName') or ""
-        
-        if clean_code in STOCK_MAPPING:
-            name = STOCK_MAPPING[clean_code]
-        elif raw_name and not re.search(r'[a-zA-Z]{5,}', raw_name):
-            name = raw_name
-        else:
-            name = f"台股企業 ({clean_code})"
+        raw_name = info.get('longName') or info.get('shortName') or query_name
+        name = raw_name if not re.search(r'[a-zA-Z]{5,}', raw_name) else f"台股企業 ({clean_c})"
         
         if is_etf_flag:
-            fund_size = 6700 if clean_code == "00878" else 3500
-            dividend_yield = 7.8 if clean_code == "00878" else 6.2
-            expense_ratio = 0.28 if clean_code == "00878" else 0.30
+            fund_size = 6700 if clean_c == "00878" else 3500
+            dividend_yield = 7.8 if clean_c == "00878" else 6.2
+            expense_ratio = 0.28 if clean_c == "00878" else 0.30
                 
             score = 78.0
             pros = [
@@ -137,7 +141,7 @@ def get_analysis(ticker, is_etf_flag, query_name):
             badge = "success" if score >= 75 else "info"
             
             return {
-                "is_etf": True, "name": name, "clean_code": clean_code, "current_price": current_price,
+                "is_etf": True, "name": name, "clean_code": clean_c, "current_price": current_price,
                 "latest_date": latest_date, "fetch_timestamp": fetch_timestamp,
                 "metric1_name": "基金規模", "metric1_val": f"{fund_size} 億",
                 "metric2_name": "預估殖利率", "metric2_val": f"{dividend_yield}%",
@@ -178,7 +182,7 @@ def get_analysis(ticker, is_etf_flag, query_name):
             pe_str = f"{pe_ratio:.1f} 倍" if isinstance(pe_ratio, (int, float)) else "N/A"
             
             return {
-                "is_etf": False, "name": name, "clean_code": clean_code, "current_price": current_price,
+                "is_etf": False, "name": name, "clean_code": clean_c, "current_price": current_price,
                 "latest_date": latest_date, "fetch_timestamp": fetch_timestamp,
                 "metric1_name": "本益比 (PE)", "metric1_val": pe_str,
                 "metric2_name": "毛利率", "metric2_val": f"{gross_margin:.1f}%",
@@ -191,10 +195,163 @@ def get_analysis(ticker, is_etf_flag, query_name):
 
 # 執行分析按鈕
 if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
-    with st.spinner('正在掃描財報與總經數據中...'):
-        data = get_analysis(taiwan_ticker, is_etf, raw_input)
+    with st.spinner(f'正在為您智慧搜尋與分析「{raw_input}」...'):
+        data = get_analysis(resolved_ticker, is_etf, raw_input)
         
     if not data.get("success", False):
         st.error(f"❌ 分析失敗：{data.get('error', '未知錯誤')}")
     else:
-        target
+        target_type_str = "📦 ETF (一籃子分散資產)" if data["is_etf"] else "🏢 個股 (單一企業營運)"
+        
+        # 顯示系統自動辨識結果，讓使用者知道查到了哪支股票
+        if raw_input.upper() != data['clean_code']:
+            st.info(f"💡 **系統自動辨識**：您輸入的「{raw_input}」已自動對應至 **{data['name']} ({data['clean_code']})**")
+
+        # 1. 摘要與風險快篩放最上方
+        with st.container(border=True):
+            st.markdown("### ⚡ 一分鐘核心總結與風險快篩")
+            if data['badge'] == 'success':
+                st.success(f"🎯 **綜合評語：{data['action']}** (綜合評分：{data['score']:.1f} 分)")
+            elif data['badge'] == 'info':
+                st.info(f"⚖️ **綜合評語：{data['action']}** (綜合評分：{data['score']:.1f} 分)")
+            else:
+                st.error(f"⚠️ **綜合評語：{data['action']}** (綜合評分：{data['score']:.1f} 分)")
+            
+            if data.get("score", 70) < 60:
+                st.warning("⚠️ **【避坑提醒】** 當前評分偏低，可能存在基本面轉弱或短線技術面破線風險，不建議盲目歐印。")
+            else:
+                st.success("✅ **【避坑提醒】** 結構基本健全，未觸發重大地雷警訊，但仍建議分批佈局。")
+
+        # 基本標題與當前價格
+        with st.container(border=True):
+            st.markdown(f"### **{data['name']} ({data['clean_code']})** ｜ {target_type_str}")
+            st.markdown(f"最新價格：**NT$ {data['current_price']:.2f}** ｜ 資料日期：`{data['latest_date']}`")
+
+        # 關鍵指標卡片
+        m1, m2, m3, m4 = st.columns(4)
+        with m1:
+            with st.container(border=True):
+                st.metric("綜合評分", f"{data['score']:.1f} 分")
+        with m2:
+            with st.container(border=True):
+                st.metric(data["metric1_name"], data["metric1_val"])
+        with m3:
+            with st.container(border=True):
+                st.metric(data["metric2_name"], data["metric2_val"])
+        with m4:
+            with st.container(border=True):
+                st.metric(data["metric3_name"], data["metric3_val"])
+
+        # 2. 趨勢圖表與說明
+        with st.container(border=True):
+            st.markdown("### 📈 股價趨勢與 AI 線性預估模型")
+            hist_df = data['hist']
+            fig = go.Figure()
+            
+            fig.add_trace(go.Scatter(
+                x=hist_df.index, y=hist_df['Close'],
+                mode='lines', name='歷史收盤價',
+                line=dict(color='#0052CC', width=2.5)
+            ))
+            
+            ma20_series = hist_df['Close'].rolling(window=20).mean()
+            fig.add_trace(go.Scatter(
+                x=hist_df.index, y=ma20_series,
+                mode='lines', name='20日均線 (月線)',
+                line=dict(color='#FF8B00', width=1.5, dash='dot')
+            ))
+            
+            if len(hist_df) > 10:
+                x_idx = np.arange(len(hist_df))
+                y_vals = hist_df['Close'].values
+                slope, intercept = np.polyfit(x_idx, y_vals, 1)
+                
+                future_days = 30
+                last_date = hist_df.index[-1]
+                future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=future_days, freq='B')
+                future_x = np.arange(len(hist_df), len(hist_df) + future_days)
+                future_y = slope * future_x + intercept
+                
+                fig.add_trace(go.Scatter(
+                    x=future_dates, y=future_y,
+                    mode='lines', name='AI 線性趨勢預估線 (30日)',
+                    line=dict(color='#36B37E', width=2, dash='dash')
+                ))
+                
+            fig.update_layout(
+                xaxis_title="日期", 
+                yaxis_title="價格 (NTD)",
+                template="plotly_white", 
+                height=380,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                margin=dict(l=10, r=10, t=10, b=10)
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            with st.expander("🔍 點此查看：數字、評分與預估線的依據與限制是什麼？"):
+                st.markdown("- **綜合評分怎麼算？**：結合「毛利率（賺錢能力）」、「營收年增率（成長動能）」與「月線位置（短線多空）」給予 0~100 分的綜合健康度。")
+                st.markdown("- **AI 預估線的依據與限制**：綠色虛線是根據過去 6 個月的股價走勢斜率做出的**純數學線性延伸**。請注意：這僅代表過去趨勢的數學投影，完全無法預測突發利多、利空或黑天鵝事件，請勿將其作為唯一買賣依據！")
+
+        # 外部查證專區
+        with st.container(border=True):
+            st.markdown("### 🔍 獨立查證與交叉比對專區")
+            st.caption("建議點擊下方權威平台，對照真實的即時報價、技術線圖與財報細節：")
+            c_link1, c_link2, c_link3 = st.columns(3)
+            code = data["clean_code"]
+            with c_link1:
+                st.link_button("📈 Yahoo 股市主頁", f"https://tw.stock.yahoo.com/quote/{code}", use_container_width=True)
+            with c_link2:
+                st.link_button("📊 Goodinfo! 股市資訊網", f"https://goodinfo.tw/StockInfo/StockDetail.asp?STOCK_ID={code}", use_container_width=True)
+            with c_link3:
+                st.link_button("📉 TradingView 專業圖表", f"https://www.tradingview.com/symbols/TWSE-{code}/", use_container_width=True)
+
+        # 優勢與風險細節
+        with st.container(border=True):
+            st.markdown("### 💡 詳細優勢與潛在風險解析")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("##### ✅ **正向利多**")
+                for pro in data['pros']:
+                    st.markdown(f"- {pro}")
+            with c2:
+                st.markdown("##### ⚠️ **潛在風險**")
+                for con in data['cons']:
+                    st.markdown(f"- {con}")
+
+        # 資金族群策略
+        with st.container(border=True):
+            user_tag = user_profile.split(' ')[0]
+            st.markdown(f"### 💰 給「{user_tag}」的獨到資金配置策略")
+            lot_price = data['current_price'] * 1000
+            
+            if "小資新手族" in user_profile:
+                strategy_desc = f"每張約 **NT$ {lot_price:,.0f} 元**。強烈建議透過 **零股交易** 或 **定期定額**，分攤成本並降低心理負擔。"
+            elif "穩健上班族" in user_profile:
+                strategy_desc = "適合當作資產配置的核心部位，採取薪水自動扣款的定期定額策略，搭配大跌時金字塔加碼法。"
+            else:
+                strategy_desc = f"單筆約 **NT$ {lot_price:,.0f} 元**。首重流動性與抗通膨效率，建議採分三批佈局或逢月線支撐再行承接。"
+
+            st.markdown(f"👉 **專屬執行方針**：{strategy_desc}")
+
+        # 同業與產業鏈標的
+        sector_info = PEER_GROUPS.get(data['clean_code'], {
+            "sector": "市場焦點精選族群", 
+            "peers": [
+                ("0050", "元大台灣50", "追蹤大盤市值表現，作為台股脈動基準。"),
+                ("2330", "台積電", "台股權王與半導體中流砥柱。"),
+                ("2317", "鴻海", "大型權值龍頭，觀察台灣電子出口氣氛。")
+            ]
+        })
+        
+        with st.container(border=True):
+            st.markdown(f"### 🔗 同族群與產業鏈關聯標的（{sector_info['sector']}）")
+            p_cols = st.columns(len(sector_info['peers']))
+            for i, (p_code, p_name, p_reason) in enumerate(sector_info['peers']):
+                with p_cols[i]:
+                    st.markdown(f"**🏢 {p_name}** (`{p_code}`)")
+                    st.caption(f"👉 {p_reason}")
+
+        # 系統資訊
+        with st.expander("ℹ️ ℹ️ 系統查詢資訊與免責聲明"):
+            st.caption(f"⏱️ 系統查詢時間：`{data['fetch_timestamp']}` ｜ 資料來源：Yahoo Finance & 台灣證券交易所")
+            st.caption("⚠️ 本工具提供之數據與觀點僅供教學與參考用途，不構成任何買賣推薦或投資建議。")
