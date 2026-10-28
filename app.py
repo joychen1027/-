@@ -110,7 +110,6 @@ def get_analysis(ticker, is_etf_flag, query_name):
         current_price = float(hist['Close'].iloc[-1])
         latest_date = hist.index[-1].strftime('%Y-%m-%d')
         fetch_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        source_url = f"https://tw.stock.yahoo.com/quote/{clean_code}"
         
         raw_name = info.get('longName') or info.get('shortName') or ""
         
@@ -136,13 +135,12 @@ def get_analysis(ticker, is_etf_flag, query_name):
                 "【大盤連動風險】若整體市場大跌，高股息資產仍會受到牽連而回檔。",
                 "【成長爆發力有限】ETF 屬於一籃子股票，無法享受單一飆股翻倍的超額利潤。"
             ]
-            
             action = "分批逢低承接（適合長期穩健領息與資產配置）" if score >= 75 else "區間盤整觀望（建議分批佈局，不宜一次買滿）"
             badge = "success" if score >= 75 else "info"
             
             return {
                 "is_etf": True, "name": name, "clean_code": clean_code, "current_price": current_price,
-                "latest_date": latest_date, "fetch_timestamp": fetch_timestamp, "source_url": source_url,
+                "latest_date": latest_date, "fetch_timestamp": fetch_timestamp,
                 "metric1_name": "基金規模", "metric1_val": f"{fund_size} 億",
                 "metric2_name": "預估殖利率", "metric2_val": f"{dividend_yield}%",
                 "metric3_name": "內扣總費率", "metric3_val": f"{expense_ratio}%",
@@ -177,13 +175,46 @@ def get_analysis(ticker, is_etf_flag, query_name):
                 cons.append("【技術面壓力】股價目前在月線之下，短線正在整理或賣壓較重。")
                 
             score = max(0.0, min(100.0, score))
-            
             action = "基本面與技術面俱佳（可依個人策略分批買進）" if score >= 75 else ("區間震盪整理（建議列入觀察名單，等待突破）" if score >= 50 else "風險偏高（建議暫時觀望，避免接刀）")
             badge = "success" if score >= 75 else ("info" if score >= 50 else "error")
             pe_str = f"{pe_ratio:.1f} 倍" if isinstance(pe_ratio, (int, float)) else "N/A"
             
             return {
                 "is_etf": False, "name": name, "clean_code": clean_code, "current_price": current_price,
-                "latest_date": latest_date, "fetch_timestamp": fetch_timestamp, "source_url": source_url,
+                "latest_date": latest_date, "fetch_timestamp": fetch_timestamp,
                 "metric1_name": "本益比 (PE)", "metric1_val": pe_str,
                 "metric2_name": "毛利率", "metric2_val": f"{gross_margin:.1f}%",
+                "metric3_name": "營收年增率", "metric3_val": f"{revenue_growth:.1f}%",
+                "score": score, "action": action, "badge": badge,
+                "pros": pros, "cons": cons, "success": True, "hist": hist
+            }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+# 執行分析按鈕
+if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
+    with st.spinner('正在掃描財報與總經數據中...'):
+        data = get_analysis(taiwan_ticker, is_etf, raw_input)
+        
+    if not data["success"]:
+        st.error(f"❌ 分析失敗：{data.get('error', '未知錯誤')}")
+    else:
+        target_type_str = "📦 ETF (一籃子分散資產)" if data["is_etf"] else "🏢 個股 (單一企業營運)"
+        
+        # 1. 摘要與風險快篩放最上方
+        with st.container(border=True):
+            st.markdown("### ⚡ 一分鐘核心總結與風險快篩")
+            if data['badge'] == 'success':
+                st.success(f"🎯 **綜合評語：{data['action']}** (綜合評分：{data['score']:.1f} 分)")
+            elif data['badge'] == 'info':
+                st.info(f"⚖️ **綜合評語：{data['action']}** (綜合評分：{data['score']:.1f} 分)")
+            else:
+                st.error(f"⚠️ **綜合評語：{data['action']}** (綜合評分：{data['score']:.1f} 分)")
+            
+            if data.get("score", 70) < 60:
+                st.warning("⚠️ **【避坑提醒】** 當前評分偏低，可能存在基本面轉弱或短線技術面破線風險，不建議盲目歐印。")
+            else:
+                st.success("✅ **【避坑提醒】** 結構基本健全，未觸發重大地雷警訊，但仍建議分批佈局。")
+
+        # 基本標題與當前價格
+        with st.container
