@@ -71,11 +71,9 @@ is_etf = clean_input.startswith("00")
 
 # 側邊欄新手引導
 with st.sidebar.expander("💡 第一次使用？新手 3 步驟指南"):
-    st.markdown("""
-    1. **輸入名稱或代號**：直接打「台積電」或「2330」皆可查詢。
-    2. **選擇族群**：選擇最符合你現況的資金規模，系統會給予專屬建議。
-    3. **點擊分析**：按下下方按鈕，直接看最上方的「風險總結」與評分！
-    """)
+    st.markdown("1. **輸入名稱或代號**：直接打「台積電」或「2330」皆可查詢。")
+    st.markdown("2. **選擇族群**：選擇最符合你現況的資金規模，系統會給予專屬建議。")
+    st.markdown("3. **點擊分析**：按下下方按鈕，直接看最上方的「風險總結」與評分！")
 
 PEER_GROUPS = {
     "00878": {
@@ -199,117 +197,4 @@ if st.sidebar.button("🚀 開始深度分析", use_container_width=True):
     if not data.get("success", False):
         st.error(f"❌ 分析失敗：{data.get('error', '未知錯誤')}")
     else:
-        target_type_str = "📦 ETF (一籃子分散資產)" if data["is_etf"] else "🏢 個股 (單一企業營運)"
-        
-        # 1. 摘要與風險快篩放最上方
-        with st.container(border=True):
-            st.markdown("### ⚡ 一分鐘核心總結與風險快篩")
-            if data['badge'] == 'success':
-                st.success(f"🎯 **綜合評語：{data['action']}** (綜合評分：{data['score']:.1f} 分)")
-            elif data['badge'] == 'info':
-                st.info(f"⚖️ **綜合評語：{data['action']}** (綜合評分：{data['score']:.1f} 分)")
-            else:
-                st.error(f"⚠️ **綜合評語：{data['action']}** (綜合評分：{data['score']:.1f} 分)")
-            
-            if data.get("score", 70) < 60:
-                st.warning("⚠️ **【避坑提醒】** 當前評分偏低，可能存在基本面轉弱或短線技術面破線風險，不建議盲目歐印。")
-            else:
-                st.success("✅ **【避坑提醒】** 結構基本健全，未觸發重大地雷警訊，但仍建議分批佈局。")
-
-        # 基本標題與當前價格
-        with st.container(border=True):
-            st.markdown(f"### **{data['name']} ({data['clean_code']})** ｜ {target_type_str}")
-            st.markdown(f"最新價格：**NT$ {data['current_price']:.2f}** ｜ 資料日期：`{data['latest_date']}`")
-
-        # 關鍵指標卡片
-        m1, m2, m3, m4 = st.columns(4)
-        with m1:
-            with st.container(border=True):
-                st.metric("綜合評分", f"{data['score']:.1f} 分")
-        with m2:
-            with st.container(border=True):
-                st.metric(data["metric1_name"], data["metric1_val"])
-        with m3:
-            with st.container(border=True):
-                st.metric(data["metric2_name"], data["metric2_val"])
-        with m4:
-            with st.container(border=True):
-                st.metric(data["metric3_name"], data["metric3_val"])
-
-        # 2. 趨勢圖表與說明
-        with st.container(border=True):
-            st.markdown("### 📈 股價趨勢與 AI 線性預估模型")
-            hist_df = data['hist']
-            fig = go.Figure()
-            
-            fig.add_trace(go.Scatter(
-                x=hist_df.index, y=hist_df['Close'],
-                mode='lines', name='歷史收盤價',
-                line=dict(color='#0052CC', width=2.5)
-            ))
-            
-            ma20_series = hist_df['Close'].rolling(window=20).mean()
-            fig.add_trace(go.Scatter(
-                x=hist_df.index, y=ma20_series,
-                mode='lines', name='20日均線 (月線)',
-                line=dict(color='#FF8B00', width=1.5, dash='dot')
-            ))
-            
-            if len(hist_df) > 10:
-                x_idx = np.arange(len(hist_df))
-                y_vals = hist_df['Close'].values
-                slope, intercept = np.polyfit(x_idx, y_vals, 1)
-                
-                future_days = 30
-                last_date = hist_df.index[-1]
-                future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=future_days, freq='B')
-                future_x = np.arange(len(hist_df), len(hist_df) + future_days)
-                future_y = slope * future_x + intercept
-                
-                fig.add_trace(go.Scatter(
-                    x=future_dates, y=future_y,
-                    mode='lines', name='AI 線性趨勢預估線 (30日)',
-                    line=dict(color='#36B37E', width=2, dash='dash')
-                ))
-                
-            fig.update_layout(
-                xaxis_title="日期", 
-                yaxis_title="價格 (NTD)",
-                template="plotly_white", 
-                height=380,
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                margin=dict(l=10, r=10, t=10, b=10)
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            
-            with st.expander("🔍 點此查看：數字、評分與預估線的依據與限制是什麼？"):
-                st.markdown("""
-                - **綜合評分怎麼算？**：結合「毛利率（賺錢能力）」、「營收年增率（成長動能）」與「月線位置（短線多空）」給予 0~100 分的綜合健康度。
-                - **AI 預估線的依據與限制**：綠色虛線是根據過去 6 個月的股價走勢斜率做出的**純數學線性延伸**。**請注意：這僅代表過去趨勢的數學投影，完全無法預測突發利多、利空或黑天鵝事件，請勿將其作為唯一買賣依據！**
-                """)
-
-        # 外部查證專區
-        with st.container(border=True):
-            st.markdown("### 🔍 獨立查證與交叉比對專區")
-            st.caption("建議點擊下方權威平台，對照真實的即時報價、技術線圖與財報細節：")
-            c_link1, c_link2, c_link3 = st.columns(3)
-            code = data["clean_code"]
-            with c_link1:
-                st.link_button("📈 Yahoo 股市主頁", f"https://tw.stock.yahoo.com/quote/{code}", use_container_width=True)
-            with c_link2:
-                st.link_button("📊 Goodinfo! 股市資訊網", f"https://goodinfo.tw/StockInfo/StockDetail.asp?STOCK_ID={code}", use_container_width=True)
-            with c_link3:
-                st.link_button("📉 TradingView 專業圖表", f"https://www.tradingview.com/symbols/TWSE-{code}/", use_container_width=True)
-
-        # 優勢與風險細節
-        with st.container(border=True):
-            st.markdown("### 💡 詳細優勢與潛在風險解析")
-            c1, c2 = st.columns(2)
-            with c1:
-                st.markdown("##### ✅ **正向利多**")
-                for pro in data['pros']:
-                    st.markdown(f"- {pro}")
-            with c2:
-                st.markdown("##### ⚠️ **潛在風險**")
-                for con in data['cons']:
-                    st.markdown(
+        target
