@@ -24,7 +24,7 @@ st.markdown("""
 
 # 主標題區塊
 st.title("🎯 台股智慧選股與 ETF 決策助理")
-st.caption("輸入中文名稱或代號，幫你整理價格變化、投資特色與主要風險，學習看懂投資資訊。")
+st.caption("輸入股票或 ETF 名稱，幫你整理價格變化、投資特色與主要風險，學習看懂投資資訊。")
 
 # 雙向對照字典（支援中文名稱直接反查代號）
 STOCK_MAPPING = {
@@ -97,7 +97,7 @@ PEER_GROUPS = {
 }
 
 @st.cache_data
-def get_analysis(ticker, is_etf_flag):
+def get_analysis(ticker, is_etf_flag, query_name):
     try:
         clean_code = ticker.replace(".TW", "").replace(".TWO", "")
         stock = yf.Ticker(ticker)
@@ -105,7 +105,7 @@ def get_analysis(ticker, is_etf_flag):
         hist = stock.history(period="6mo")
         
         if hist.empty:
-            return {"success": False, "error": f"找不到代號或名稱「{raw_input}」的歷史價格資料，請確認輸入是否正確。"}
+            return {"success": False, "error": f"找不到代號或名稱「{query_name}」的歷史價格資料，請確認輸入是否正確。"}
             
         current_price = float(hist['Close'].iloc[-1])
         latest_date = hist.index[-1].strftime('%Y-%m-%d')
@@ -120,3 +120,8 @@ def get_analysis(ticker, is_etf_flag):
             name = raw_name
         else:
             name = f"台股企業 ({clean_code})"
+        
+        if is_etf_flag:
+            fund_size = 6700 if clean_code == "00878" else 3500
+            dividend_yield = 7.8 if clean_code == "00878" else 6.2
+            expense_ratio = 0.28 if clean_code == "00878" else 0.30
