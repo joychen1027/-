@@ -22,21 +22,45 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("🎯 台股智慧選股與 ETF 決策助理")
-st.caption("支援全台股智慧搜尋與試算：輸入股票/ETF名稱、俗稱或代號，即時預估 30 天後資金變化！")
+st.caption("支援全台股智慧搜尋與彈性時間試算：輸入股票/ETF名稱、俗稱或代號，自訂天數預估資金變化！")
 
 # 側邊欄設定
 st.sidebar.header("⚙️ 查閱與投資試算設定")
 raw_input = st.sidebar.text_input("輸入股票名稱、俗稱或代號", value="2330", help="例如：中鋼、2002、台積電、或是任何冷門飆股代號").strip()
 
-# 新增資金計算與試算輸入框
+# 1. 預計投資金額輸入框
 investment_amount = st.sidebar.number_input(
     "預計投資金額 (TWD)", 
     min_value=1000, 
     max_value=100000000, 
     value=100000, 
     step=10000,
-    help="輸入您預計要買入此標的的總金額，系統將幫您計算買入股數與預估 30 天後的資產變化。"
+    help="輸入您預計要買入此標的的總金額，系統將幫您計算買入股數與預估未來的資產變化。"
 )
+
+# 2. 新增：自訂預估時間跨度選單
+time_horizon_label = st.sidebar.selectbox(
+    "選擇預估投資時間跨度",
+    [
+        "30 天 (約 1 個月)", 
+        "60 天 (約 2 個月)", 
+        "180 天 (約半年)", 
+        "365 天 (約 1 年)", 
+        "730 天 (約 2 年)"
+    ],
+    index=0,
+    help="選擇您想要推演未來資產變化的時間長度。"
+)
+
+# 將文字對應轉換為實際天數
+horizon_days_map = {
+    "30 天 (約 1 個月)": 30,
+    "60 天 (約 2 個月)": 60,
+    "180 天 (約半年)": 180,
+    "365 天 (約 1 年)": 365,
+    "730 天 (約 2 年)": 730
+}
+future_days = horizon_days_map[time_horizon_label]
 
 user_profile = st.sidebar.selectbox(
     "選擇你的資金族群", 
@@ -47,7 +71,7 @@ user_profile = st.sidebar.selectbox(
     ]
 )
 
-# 💡 終極深度智慧解析函式（強化搜尋深度與中文名稱過濾）
+# 💡 終極深度智慧解析函式
 def resolve_ticker(user_query):
     common_aliases = {
         "GG": "2330", "護國神山": "2330",
@@ -60,7 +84,6 @@ def resolve_ticker(user_query):
     cleaned_query = user_query.strip()
     upper_query = cleaned_query.upper()
     
-    # 1. 檢查口語俗稱
     if cleaned_query in common_aliases:
         code = common_aliases[cleaned_query]
         return f"{code}.TW", code, cleaned_query
@@ -68,7 +91,6 @@ def resolve_ticker(user_query):
         code = common_aliases[upper_query]
         return f"{code}.TW", code, upper_query
 
-    # 2. 如果使用者直接輸入 4-5 位數代號
     if re.match(r'^\d{4,5}$', cleaned_query):
         for suffix in ['.TW', '.TWO']:
             ticker_candidate = f"{cleaned_query}{suffix}"
@@ -83,7 +105,6 @@ def resolve_ticker(user_query):
             except Exception:
                 continue
 
-    # 3. 深度線上模糊搜尋
     try:
         search_results = yf.Search(cleaned_query, max_results=10).quotes
         for item in search_results:
@@ -91,10 +112,8 @@ def resolve_ticker(user_query):
             if symbol.endswith('.TW') or symbol.endswith('.TWO'):
                 clean_code = symbol.replace('.TW', '').replace('.TWO', '')
                 shortname = item.get('shortname') or item.get('longname') or cleaned_query
-                
                 if re.search(r'[a-zA-Z]{8,}', shortname) and not any('\u4e00' <= c <= '\u9fff' for c in shortname):
                     shortname = f"台股企業 ({clean_code})"
-                    
                 return symbol, clean_code, shortname
     except Exception:
         pass
@@ -107,10 +126,9 @@ is_etf = clean_code.startswith("00") if clean_code else False
 # 側邊欄新手引導
 with st.sidebar.expander("💡 第一次使用？新手 3 步驟指南"):
     st.markdown("1. **輸入代號/名稱**：打「中鋼」、「2002」或「台積電」皆可搜尋。")
-    st.markdown("2. **輸入試算金額**：在側邊欄輸入您預計投入的資金。")
-    st.markdown("3. **查看預估變化**：系統會以 AI 線性趨勢推算 30 天後的預估資產與損益。")
+    st.markdown("2. **設定金額與天數**：在側邊欄輸入預計投資金額，並自由選擇 1 個月、1 年等預估時間。")
+    st.markdown("3. **查看預估變化**：系統會動態推算指定天數後的資產總值與損益。")
 
-# 同業與產業鏈資料庫
 PEER_GROUPS = {
     "00878": {
         "sector": "高股息 ETF 族群", 
@@ -139,12 +157,12 @@ PEER_GROUPS = {
 }
 
 @st.cache_data
-def get_analysis(ticker, is_etf_flag, query_name, cached_name, inv_amount):
+def get_analysis(ticker, is_etf_flag, query_name, cached_name, inv_amount, days_ahead):
     try:
         clean_c = ticker.replace(".TW", "").replace(".TWO", "")
         stock = yf.Ticker(ticker)
         info = stock.info
-        hist = stock.history(period="6mo")
+        hist = stock.history(period="1y") # 擴大抓取 1 年歷史資料以支援較長天數預估
         
         if hist.empty:
             return {"success": False, "error": f"找不到與「{query_name}」對應的台股歷史資料，請確認代號或名稱是否正確。"}
@@ -159,20 +177,22 @@ def get_analysis(ticker, is_etf_flag, query_name, cached_name, inv_amount):
         else:
             name = raw_name
         
-        # 💰 資金計算與 30 天後趨勢預估
+        # 💰 資金計算與動態天數趨勢預估
         shares_bought = int(inv_amount // current_price) if current_price > 0 else 0
         
         if len(hist) > 10:
             x_idx = np.arange(len(hist))
             y_vals = hist['Close'].values
             slope, intercept = np.polyfit(x_idx, y_vals, 1)
-            future_x = len(hist) + 30
-            predicted_price_30d = max(0.01, slope * future_x + intercept)
+            # 轉換交易日（台股一年約 250 個交易日，約當 365 日曆天）
+            trade_days_ahead = int(days_ahead * (250 / 365))
+            future_x = len(hist) + max(1, trade_days_ahead)
+            predicted_price_future = max(0.01, slope * future_x + intercept)
         else:
-            predicted_price_30d = current_price
+            predicted_price_future = current_price
 
-        predicted_val_30d = shares_bought * predicted_price_30d
-        est_profit = predicted_val_30d - (shares_bought * current_price)
+        predicted_val_future = shares_bought * predicted_price_future
+        est_profit = predicted_val_future - (shares_bought * current_price)
         est_return_pct = (est_profit / (shares_bought * current_price) * 100) if (shares_bought * current_price) > 0 else 0.0
 
         if is_etf_flag:
@@ -201,8 +221,8 @@ def get_analysis(ticker, is_etf_flag, query_name, cached_name, inv_amount):
                 "metric3_name": "內扣總費率", "metric3_val": f"{expense_ratio}%",
                 "score": score, "action": action, "badge": badge,
                 "pros": pros, "cons": cons, "success": True, "hist": hist,
-                "shares_bought": shares_bought, "predicted_price_30d": predicted_price_30d,
-                "predicted_val_30d": predicted_val_30d, "est_profit": est_profit,
+                "shares_bought": shares_bought, "predicted_price_future": predicted_price_future,
+                "predicted_val_future": predicted_val_future, "est_profit": est_profit,
                 "est_return_pct": est_return_pct
             }
         else:
@@ -245,8 +265,8 @@ def get_analysis(ticker, is_etf_flag, query_name, cached_name, inv_amount):
                 "metric3_name": "營收年增率", "metric3_val": f"{revenue_growth:.1f}%",
                 "score": score, "action": action, "badge": badge,
                 "pros": pros, "cons": cons, "success": True, "hist": hist,
-                "shares_bought": shares_bought, "predicted_price_30d": predicted_price_30d,
-                "predicted_val_30d": predicted_val_30d, "est_profit": est_profit,
+                "shares_bought": shares_bought, "predicted_price_future": predicted_price_future,
+                "predicted_val_future": predicted_val_future, "est_profit": est_profit,
                 "est_return_pct": est_return_pct
             }
     except Exception as e:
@@ -257,8 +277,8 @@ if st.sidebar.button("🚀 開始深度分析與資金試算", use_container_wid
     if not resolved_ticker:
         st.error(f"❌ 找不到與「{raw_input}」對應的台股標的，請嘗試輸入正確的 4 位數代號（例如：2002）或完整名稱。")
     else:
-        with st.spinner(f'正在向 Yahoo 股市資料庫聯動搜尋與計算「{raw_input}」...'):
-            data = get_analysis(resolved_ticker, is_etf, raw_input, resolved_name, investment_amount)
+        with st.spinner(f'正在向 Yahoo 股市資料庫聯動搜尋與試算「{raw_input}」...'):
+            data = get_analysis(resolved_ticker, is_etf, raw_input, resolved_name, investment_amount, future_days)
             
         if not data.get("success", False):
             st.error(f"❌ 分析失敗：{data.get('error', '未知錯誤')}")
@@ -287,20 +307,20 @@ if st.sidebar.button("🚀 開始深度分析與資金試算", use_container_wid
                 st.markdown(f"### **{data['name']} ({data['clean_code']})** ｜ {target_type_str}")
                 st.markdown(f"最新價格：**NT$ {data['current_price']:.2f}** ｜ 資料日期：`{data['latest_date']}`")
 
-            # 💰 新增：預估資金變化卡片專區
+            # 💰 動態時間預估資金變化卡片專區
             with st.container(border=True):
-                st.markdown(f"### 💵 預計投資 NT$ {investment_amount:,.0f} 元 ｜ 30 天後資金預估變化")
+                st.markdown(f"### 💵 預計投資 NT$ {investment_amount:,.0f} 元 ｜ **{time_horizon_label}** 後資金預估變化")
                 c_inv1, c_inv2, c_inv3, c_inv4 = st.columns(4)
                 with c_inv1:
                     st.metric("可買入股數", f"{data['shares_bought']:,} 股", help="以當前最新收盤價計算可買入的最多股數（含零股）")
                 with c_inv2:
-                    st.metric("預估 30 天後單股價格", f"NT$ {data['predicted_price_30d']:.2f}")
+                    st.metric(f"預估 {time_horizon_label} 後單股價", f"NT$ {data['predicted_price_future']:.2f}")
                 with c_inv3:
-                    st.metric("預估 30 天後資產總值", f"NT$ {data['predicted_val_30d']:,.0f}")
+                    st.metric(f"預估 {time_horizon_label} 後總值", f"NT$ {data['predicted_val_future']:,.0f}")
                 with c_inv4:
                     profit_color = "normal" if data['est_profit'] == 0 else ("inverse" if data['est_profit'] < 0 else "normal")
-                    st.metric("預估 30 天損益", f"NT$ {data['est_profit']:+,.0f}", f"{data['est_return_pct']:+.2f}%", delta_color=profit_color)
-                st.caption("⚠️ 註：30 天後資金變化為基於過去 6 個月歷史股價之 AI 線性斜率投影，僅供試算參考，不保證未來獲利。")
+                    st.metric("預估期間損益", f"NT$ {data['est_profit']:+,.0f}", f"{data['est_return_pct']:+.2f}%", delta_color=profit_color)
+                st.caption(f"⚠️ 註：所選時間（{time_horizon_label}）之資產變化為基於歷史股價斜率之 AI 線性模型推算，僅供教學與模擬參考，不代表未來實際報酬。")
 
             # 關鍵指標卡片
             m1, m2, m3, m4 = st.columns(4)
@@ -319,7 +339,7 @@ if st.sidebar.button("🚀 開始深度分析與資金試算", use_container_wid
 
             # 2. 趨勢圖表與說明
             with st.container(border=True):
-                st.markdown("### 📈 股價趨勢與 AI 線性預估模型 (含 30 日預估走勢)")
+                st.markdown(f"### 📈 股價趨勢與 AI 線性預估模型 (含指定 {time_horizon_label} 走勢)")
                 hist_df = data['hist']
                 fig = go.Figure()
                 
@@ -341,15 +361,15 @@ if st.sidebar.button("🚀 開始深度分析與資金試算", use_container_wid
                     y_vals = hist_df['Close'].values
                     slope, intercept = np.polyfit(x_idx, y_vals, 1)
                     
-                    future_days = 30
+                    trade_days_ahead = int(future_days * (250 / 365))
                     last_date = hist_df.index[-1]
-                    future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=future_days, freq='B')
-                    future_x = np.arange(len(hist_df), len(hist_df) + future_days)
+                    future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=max(1, trade_days_ahead), freq='B')
+                    future_x = np.arange(len(hist_df), len(hist_df) + len(future_dates))
                     future_y = slope * future_x + intercept
                     
                     fig.add_trace(go.Scatter(
                         x=future_dates, y=future_y,
-                        mode='lines', name='AI 線性趨勢預估線 (30日)',
+                        mode='lines', name=f'AI 趨勢預估線 ({time_horizon_label})',
                         line=dict(color='#36B37E', width=2, dash='dash')
                     ))
                     
@@ -364,8 +384,8 @@ if st.sidebar.button("🚀 開始深度分析與資金試算", use_container_wid
                 st.plotly_chart(fig, use_container_width=True)
                 
                 with st.expander("🔍 點此查看：數字、評分與預估線的依據與限制是什麼？"):
-                    st.markdown("- **綜合評分怎麼算？**：結合「毛利率（賺錢能力）」、「營收年增率（成長動能）」與「月線位置（短線多空）」給予 0~100 分的綜合健康度。")
-                    st.markdown("- **AI 預估線的依據與限制**：綠色虛線是根據過去 6 個月的股價走勢斜率做出的**純數學線性延伸**。請注意：這僅代表過去趨勢的數學投影，完全無法預測突發利多、利空或黑天鵝事件，請勿將其作為唯一買賣依據！")
+                    st.markdown("- **綜合評分怎麼算？**：結合毛利率、營收年增率與月線位置給予 0~100 分的綜合健康度。")
+                    st.markdown("- **AI 預估線的依據與限制**：綠色虛線是根據歷史股價斜率做出的線性延伸，僅供模擬參考，無法預測突發黑天鵝事件。")
 
             # 外部查證專區
             with st.container(border=True):
@@ -423,10 +443,4 @@ if st.sidebar.button("🚀 開始深度分析與資金試算", use_container_wid
                 p_cols = st.columns(len(sector_info['peers']))
                 for i, (p_code, p_name, p_reason) in enumerate(sector_info['peers']):
                     with p_cols[i]:
-                        st.markdown(f"**🏢 {p_name}** (`{p_code}`)")
-                        st.caption(f"👉 {p_reason}")
-
-            # 系統資訊
-            with st.expander("ℹ️ 系統查詢資訊與免責聲明"):
-                st.caption(f"⏱️ 系統查詢時間：`{data['fetch_timestamp']}` ｜ 資料來源：Yahoo Finance & 台灣證券交易所")
-                st.caption("⚠️ 本工具提供之數據與觀點僅供教學與參考用途，不構成任何買賣推薦或投資建議。")
+                        st.markdown
