@@ -55,7 +55,6 @@ STOCK_MAPPING = {
 st.sidebar.header("⚙️ 查閱設定")
 raw_input = st.sidebar.text_input("輸入台股名稱或代號", value="台積電", help="例如：可輸入「台積電」或「2330」｜ ETF可輸入「國泰永續高股息」或「00878」").strip()
 
-# 智慧轉換：如果使用者輸入的是中文，自動對照轉成代號；如果是代號則保持不變
 clean_input = STOCK_MAPPING.get(raw_input, raw_input).upper()
 taiwan_ticker = f"{clean_input}.TW"
 
@@ -121,49 +120,3 @@ def get_analysis(ticker, is_etf_flag):
             name = raw_name
         else:
             name = f"台股企業 ({clean_code})"
-        
-        if is_etf_flag:
-            fund_size = 6700 if clean_code == "00878" else 3500
-            dividend_yield = 7.8 if clean_code == "00878" else 6.2
-            expense_ratio = 0.28 if clean_code == "00878" else 0.30
-                
-            score = 78.0
-            pros = [
-                "【資產抗震】高股息 ETF 在市場震盪時，具備較強的現金流防禦特性。",
-                f"【規模與流動性】基金規模達 {fund_size} 億元以上，買賣容易，能分散單一公司倒閉的風險。",
-                f"【預估收益】預估年化殖利率約 {dividend_yield}%，內扣費用率約 {expense_ratio}%（成本合理）。"
-            ]
-            cons = [
-                "【大盤連動風險】若整體市場大跌，高股息資產仍會受到牽連而回檔。",
-                "【成長爆發力有限】ETF 屬於一籃子股票，無法享受單一飆股翻倍的超額利潤。"
-            ]
-            
-            action = "分批逢低承接（適合長期穩健領息與資產配置）" if score >= 75 else "區間盤整觀望（建議分批佈局，不宜一次買滿）"
-            badge = "success" if score >= 75 else "info"
-            
-            return {
-                "is_etf": True, "name": name, "clean_code": clean_code, "current_price": current_price,
-                "latest_date": latest_date, "fetch_timestamp": fetch_timestamp, "source_url": source_url,
-                "metric1_name": "基金規模", "metric1_val": f"{fund_size} 億",
-                "metric2_name": "預估殖利率", "metric2_val": f"{dividend_yield}%",
-                "metric3_name": "內扣總費率", "metric3_val": f"{expense_ratio}%",
-                "score": score, "action": action, "badge": badge,
-                "pros": pros, "cons": cons, "success": True, "hist": hist
-            }
-        else:
-            ma20 = float(hist['Close'].rolling(window=20).mean().iloc[-1]) if len(hist) >= 20 else current_price
-            gross_margin = float(info.get('grossMargins') or 0.25) * 100
-            pe_ratio = info.get('trailingPE') or info.get('forwardPE') or 18.0
-            revenue_growth = float(info.get('revenueGrowth') or 0.05) * 100
-            
-            score = 55.0
-            pros, cons = [], []
-            
-            if gross_margin > 25:
-                score += 15
-                pros.append(f"【獲利護城河】毛利率高達 {gross_margin:.1f}%，代表公司產品有訂價能力、賺錢能力強。")
-            else:
-                cons.append(f"【利潤壓力】毛利率偏低 ({gross_margin:.1f}%)，容易受到成本上漲或價格競爭影響。")
-                
-            if revenue_growth > 5:
-                score +=
